@@ -14,14 +14,12 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:8.1.0'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        // إضافة classpath لبلاجن Google Services
         classpath 'com.google.gms:google-services:4.4.0'
     }
 }
 
 allprojects {
     repositories {
-        // إضافة مستودعات متعددة لضمان تنزيل التبعيات
         google()
         mavenCentral()
         jcenter()
@@ -38,6 +36,19 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(':app')
+    
+    // إضافة تكوين namespace تلقائي للمشاريع الفرعية
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                if (!project.android.hasProperty('namespace') || project.android.namespace == null || project.android.namespace.isEmpty()) {
+                    // تعيين namespace افتراضي بناءً على اسم المشروع
+                    project.android.namespace = project.group.toString() ?: "com.example.${project.name}"
+                    println "تم تعيين namespace تلقائياً للمشروع ${project.name}: ${project.android.namespace}"
+                }
+            }
+        }
+    }
 }
 
 tasks.register("clean", Delete) {
