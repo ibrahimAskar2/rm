@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=2.19.0 <3.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -26,7 +26,7 @@ dependencies:
   flutter_secure_storage: ^9.2.4  # تم تعديل الإصدار لتجنب التعارض
 
   # واجهة المستخدم
-  cupertino_icons: ^1.0.5
+  cupertino_icons: ^1.0.6
   flutter_svg: ^2.0.7
   cached_network_image: ^3.2.3
   shimmer: ^3.0.0
@@ -53,14 +53,17 @@ dependencies:
   flutter_sound: ^9.2.13  # تم تحديثه لإصلاح مشكلة channelCount
   just_audio: ^0.9.34  # مضاف لتشغيل نغمات الرنين
   image: ^4.0.17  # مضاف لدعم معالجة الصور في generate_icons.dart
+
+dependency_overrides:
   flutter_plugin_android_lifecycle: ^2.0.27
+  file_picker: ^10.1.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.2
+  flutter_lints: ^3.0.1
   mockito: ^5.4.2  # تم تحديد إصدار محدد بدلاً من 'any'
-  build_runner: ^2.4.6
+  build_runner: ^2.4.14
 
 flutter:
   uses-material-design: true
