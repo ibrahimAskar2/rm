@@ -1,67 +1,85 @@
 name: ansar_team
-description: تطبيق فريق أنصار
-
-# تأكد من تحديث هذا الإصدار ليتوافق مع متطلبات المشروع
+description: تطبيق فريق الأنصار لإدارة شؤون العمل
+publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: '>=2.19.0 <3.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  
-  # تحديث المكونات الإضافية إلى أحدث إصدار
-  flutter_plugin_android_lifecycle: ^2.0.27  # تحديث إلى الإصدار 2.0.27
-  file_picker: ^10.1.2
-  flutter_sound: ^9.2.13
-  path_provider: ^2.1.2
-  path_provider_android: ^2.2.2
-  url_launcher: ^6.2.5
-  url_launcher_android: ^6.3.0
-  
-  # تحديث مكتبة flutter_secure_storage إلى الإصدار 9.2.4
-  flutter_secure_storage: ^9.2.4
-  
-  # باقي التبعيات الموجودة في المشروع
-  cupertino_icons: ^1.0.6
-  firebase_core: ^2.32.0
-  firebase_auth: ^4.20.0
-  firebase_storage: ^11.7.7
-  cloud_firestore: ^4.17.5
-  firebase_messaging: ^14.9.4
-  firebase_database: ^10.5.7
-  
-  # باقي التبعيات...
+  flutter_localizations:
+    sdk: flutter
 
-# إذا كانت flutter_plugin_android_lifecycle تبعية غير مباشرة، يمكنك استخدام dependency_overrides
-dependency_overrides:
-  flutter_plugin_android_lifecycle: ^2.0.27
+  # Firebase
+  firebase_core: ^2.15.0
+  firebase_auth: ^4.7.2
+  cloud_firestore: ^4.8.4
+  firebase_storage: ^11.2.5
+  firebase_messaging: ^14.6.5
+  firebase_database: ^10.2.4  # مضاف لدعم تبادل معلومات الاتصال للمكالمات الصوتية
+
+  # المصادقة
+  local_auth: ^2.1.6
+  shared_preferences: ^2.2.0
+  flutter_secure_storage: ^9.2.4  # تم تعديل الإصدار لتجنب التعارض
+
+  # واجهة المستخدم
+  cupertino_icons: ^1.0.5
+  flutter_svg: ^2.0.7
+  cached_network_image: ^3.2.3
+  shimmer: ^3.0.0
+  lottie: ^2.6.0
+  flutter_spinkit: ^5.2.0
+
+  # إدارة الحالة
+  provider: ^6.0.5
+
+  # المكالمات الصوتية
+  flutter_webrtc: ^0.9.34  # مضاف لدعم المكالمات الصوتية
+  sdp_transform: ^0.3.2  # تم تحديث الإصدار لدعم null safety
+  permission_handler: ^10.4.3  # مضاف للتعامل مع أذونات الميكروفون
+
+  # أدوات
+  intl: ^0.19.0  # تم تحديث الإصدار ليتوافق مع flutter_localizations
+  path_provider: ^2.1.0
+  uuid: ^3.0.7
+  http: ^1.1.0
+  url_launcher: ^6.1.12
+  share_plus: ^7.1.0
+  image_picker: ^1.0.2
+  file_picker: ^6.1.1  # تم تحديث الإصدار لإصلاح مشكلة platforms
+  flutter_sound: ^9.2.13  # تم تحديثه لإصلاح مشكلة channelCount
+  just_audio: ^0.9.34  # مضاف لتشغيل نغمات الرنين
+  image: ^4.0.17  # مضاف لدعم معالجة الصور في generate_icons.dart
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.1
-  build_runner: ^2.4.14
+  flutter_lints: ^2.0.2
+  mockito: ^5.4.2  # تم تحديد إصدار محدد بدلاً من 'any'
+  build_runner: ^2.4.6
 
-# تكوين Flutter
 flutter:
   uses-material-design: true
-  
-  # إضافة مجلدات الأصول المطلوبة
+
   assets:
-    - assets/sounds/
+    - assets/logo.jpg
+    - assets/sounds/  # مضاف لنغمات الرنين
     - assets/images/
     - assets/icons/
     - assets/animations/
-  
-  # إضافة الخطوط المطلوبة
+
   fonts:
     - family: Cairo
       fonts:
-        - asset: assets/fonts/Cairo-Medium.ttf
-          weight: 500
         - asset: assets/fonts/Cairo-Regular.ttf
-          weight: 400
         - asset: assets/fonts/Cairo-Bold.ttf
           weight: 700
+        - asset: assets/fonts/Cairo-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Cairo-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Cairo-Light.ttf
+          weight: 300
