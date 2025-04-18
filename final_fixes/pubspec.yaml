@@ -66,6 +66,7 @@ flutter:
 
   assets:
     - assets/logo.jpg
+    - assets/fonts/
     - assets/sounds/  # مضاف لنغمات الرنين
     - assets/images/
     - assets/icons/
