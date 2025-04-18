@@ -23,7 +23,7 @@ dependencies:
   # المصادقة
   local_auth: ^2.1.6
   shared_preferences: ^2.2.0
-  flutter_secure_storage: ^7.0.0  # تم تعديل الإصدار لتجنب التعارض
+  flutter_secure_storage: ^9.2.4  # تم تعديل الإصدار لتجنب التعارض
 
   # واجهة المستخدم
   cupertino_icons: ^1.0.5
