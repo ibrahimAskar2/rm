@@ -8,13 +8,28 @@ buildscript {
         maven { url 'https://maven.aliyun.com/repository/public' }
         maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
         maven { url 'https://jitpack.io' }
-        gradlePluginPortal()
+        gradlePluginPortal() 
     }
 
     dependencies {
         classpath 'com.android.tools.build:gradle:8.1.0'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.google.gms:google-services:4.4.0'
+    }
+}
+
+// إضافة تكوين namespace تلقائي للمشاريع الفرعية
+gradle.projectsEvaluated {
+    subprojects { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                if (!project.android.hasProperty('namespace') || project.android.namespace == null || project.android.namespace.isEmpty()) {
+                    // تعيين namespace افتراضي بناءً على اسم المشروع
+                    project.android.namespace = project.group.toString() ?: "com.example.${project.name}"
+                    println "تم تعيين namespace تلقائياً للمشروع ${project.name}: ${project.android.namespace}"
+                }
+            }
+        }
     }
 }
 
@@ -35,20 +50,7 @@ subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 subprojects {
-    project.evaluationDependsOn(':app')
-    
-    // إضافة تكوين namespace تلقائي للمشاريع الفرعية
-    afterEvaluate { project ->
-        if (project.hasProperty('android')) {
-            project.android {
-                if (!project.android.hasProperty('namespace') || project.android.namespace == null || project.android.namespace.isEmpty()) {
-                    // تعيين namespace افتراضي بناءً على اسم المشروع
-                    project.android.namespace = project.group.toString() ?: "com.example.${project.name}"
-                    println "تم تعيين namespace تلقائياً للمشروع ${project.name}: ${project.android.namespace}"
-                }
-            }
-        }
-    }
+    project.evaluationDependsOn(':app') 
 }
 
 tasks.register("clean", Delete) {
