@@ -53,6 +53,7 @@ dependencies:
   flutter_sound: ^9.2.13  # تم تحديثه لإصلاح مشكلة channelCount
   just_audio: ^0.9.34  # مضاف لتشغيل نغمات الرنين
   image: ^4.0.17  # مضاف لدعم معالجة الصور في generate_icons.dart
+  flutter_plugin_android_lifecycle: ^2.0.27
 
 dev_dependencies:
   flutter_test:
