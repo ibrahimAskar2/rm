@@ -1,7 +1,6 @@
 name: ansar_team
 description: تطبيق فريق أنصار
 
-# تأكد من تحديث هذا الإصدار ليتوافق مع متطلبات المشروع
 version: 1.0.0+1
 
 environment:
@@ -12,19 +11,17 @@ dependencies:
     sdk: flutter
   
   # تحديث المكونات الإضافية إلى أحدث إصدار
-  flutter_plugin_android_lifecycle: ^2.0.27  # تحديث إلى الإصدار 2.0.27
-  file_picker: ^10.1.2  # تحديث إلى الإصدار 10.1.2
-  permission_handler: ^12.0.0+1  # تحديث إلى الإصدار 12.0.0+1
-  flutter_webrtc: ^0.13.1+hotfix.1  # تحديث إلى الإصدار 0.13.1+hotfix.1
-  local_auth_android: ^1.0.48  # تحديث إلى الإصدار 1.0.48
-  image_picker_android: ^0.8.12+22  # تحديث إلى الإصدار 0.8.12+22
+  flutter_plugin_android_lifecycle: ^2.0.27
+  file_picker: ^10.1.2
+  permission_handler: ^12.0.0+1
+  flutter_webrtc: ^0.13.1+hotfix.1
+  local_auth: ^2.1.8  # استخدم الحزمة الرئيسية بدلاً من local_auth_android
+  image_picker: ^1.0.7  # استخدم الحزمة الرئيسية بدلاً من image_picker_android
   
   # باقي المكتبات المستخدمة في المشروع
   flutter_sound: ^9.2.13
   path_provider: ^2.1.2
-  path_provider_android: ^2.2.2
   url_launcher: ^6.2.5
-  url_launcher_android: ^6.3.0
   flutter_secure_storage: ^9.2.4
   
   # باقي التبعيات الموجودة في المشروع
@@ -35,17 +32,6 @@ dependencies:
   cloud_firestore: ^4.17.5
   firebase_messaging: ^14.9.4
   firebase_database: ^10.5.7
-  
-  # باقي التبعيات...
-
-# إذا كانت هناك حاجة لتجاوز إصدارات محددة من المكتبات
-dependency_overrides:
-  flutter_plugin_android_lifecycle: ^2.0.27
-  file_picker: ^10.1.2
-  permission_handler_android: ^13.0.1  # تبعية فرعية لـ permission_handler
-  flutter_webrtc: ^0.13.1+hotfix.1
-  local_auth_android: ^1.0.48
-  image_picker_android: ^0.8.12+22
 
 dev_dependencies:
   flutter_test:
@@ -53,18 +39,15 @@ dev_dependencies:
   flutter_lints: ^3.0.1
   build_runner: ^2.4.14
 
-# تكوين Flutter
 flutter:
   uses-material-design: true
   
-  # إضافة مجلدات الأصول المطلوبة
   assets:
     - assets/sounds/
     - assets/images/
     - assets/icons/
     - assets/animations/
   
-  # إضافة الخطوط المطلوبة
   fonts:
     - family: Cairo
       fonts:
