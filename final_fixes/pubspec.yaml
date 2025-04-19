@@ -17,7 +17,7 @@ dependencies:
   firebase_auth: ^5.5.2
   cloud_firestore: ^4.17.5
   firebase_storage: ^11.6.5
-  firebase_messaging: ^15.2.5
+  firebase_messaging: ^15.0.0
   firebase_database: ^10.5.7
 
   # المصادقة
