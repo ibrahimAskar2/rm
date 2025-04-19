@@ -21,7 +21,7 @@ dependencies:
   firebase_database: ^10.5.7
 
   # المصادقة
-  local_auth: ^1.0.38
+  local_auth: ^2.1.6
   shared_preferences: ^2.5.0
   flutter_secure_storage: ^9.2.4
 
@@ -48,7 +48,7 @@ dependencies:
   http: ^1.1.0
   url_launcher: ^6.1.12
   share_plus: ^7.1.0
-  image_picker: ^4.3.0
+  image_picker: ^1.0.7
   file_picker: ^10.1.0
   just_audio: ^0.9.34
   image: ^4.0.17
