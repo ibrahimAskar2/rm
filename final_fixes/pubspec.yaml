@@ -21,7 +21,7 @@ dependencies:
   firebase_database: ^10.2.4
 
   # المصادقة
-  local_auth: ^2.1.6  # لا تستخدم على الويب
+  local_auth: ^2.1.6
   shared_preferences: ^2.2.0
   flutter_secure_storage: ^9.2.4
 
@@ -37,9 +37,9 @@ dependencies:
   provider: ^6.0.5
 
   # المكالمات الصوتية
-  flutter_webrtc: ^0.9.34  # تأكد من استخدامه فقط على المنصات التي تدعمه
+  flutter_webrtc: ^0.9.34
   sdp_transform: ^0.3.2
-  permission_handler: ^10.4.3  # تجاهله على الويب
+  permission_handler: ^10.4.3
 
   # أدوات
   intl: ^0.19.0
@@ -48,12 +48,13 @@ dependencies:
   http: ^1.1.0
   url_launcher: ^6.1.12
   share_plus: ^7.1.0
-  image_picker: ^1.0.7  # تحديث الإصدار لأفضل دعم للويب
+  image_picker: ^1.0.7
   file_picker: ^6.1.1
-  flutter_sound: ^9.2.13  # ⚠️ يفضل تجاهله على الويب
   just_audio: ^0.9.34
   image: ^4.0.17
   flutter_plugin_android_lifecycle: ^2.0.27
+
+  # ❌ حذف flutter_sound لتفادي مشاكل منصة الويب
 
 dev_dependencies:
   flutter_test:
@@ -67,7 +68,7 @@ flutter:
 
   assets:
     - assets/logo.jpg
-    - assets/sounds/  # مضاف لنغمات الرنين
+    - assets/sounds/
     - assets/images/
     - assets/icons/
     - assets/animations/
