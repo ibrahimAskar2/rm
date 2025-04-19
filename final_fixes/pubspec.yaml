@@ -13,16 +13,16 @@ dependencies:
     sdk: flutter
 
   # Firebase
-  firebase_core: ^2.15.0
-  firebase_auth: ^4.7.2
-  cloud_firestore: ^4.8.4
-  firebase_storage: ^11.2.5
-  firebase_messaging: ^14.6.5
-  firebase_database: ^10.2.4
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.16.0
+  cloud_firestore: ^4.17.5
+  firebase_storage: ^11.6.5
+  firebase_messaging: ^14.7.10
+  firebase_database: ^10.5.7
 
   # المصادقة
   local_auth: ^2.1.6
-  shared_preferences: ^2.2.0
+  shared_preferences: ^2.5.0
   flutter_secure_storage: ^9.2.4
 
   # واجهة المستخدم
