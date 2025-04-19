@@ -53,6 +53,10 @@ dependencies:
   just_audio: ^0.9.34
   image: ^4.0.17
   flutter_plugin_android_lifecycle: ^2.0.27
+  image_picker_android: ^0.8.4+11
+  image_picker_for_web: ^2.1.0
+  image_picker_ios: ^0.8.4+11
+  image_picker_platform_interface: ^2.3.0
 
   # ❌ حذف flutter_sound لتفادي مشاكل منصة الويب
 
