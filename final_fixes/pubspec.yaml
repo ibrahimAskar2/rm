@@ -18,12 +18,12 @@ dependencies:
   cloud_firestore: ^4.8.4
   firebase_storage: ^11.2.5
   firebase_messaging: ^14.6.5
-  firebase_database: ^10.2.4  # مضاف لدعم تبادل معلومات الاتصال للمكالمات الصوتية
+  firebase_database: ^10.2.4
 
   # المصادقة
-  local_auth: ^2.1.6
+  local_auth: ^2.1.6  # لا تستخدم على الويب
   shared_preferences: ^2.2.0
-  flutter_secure_storage: ^9.2.4  # تم تعديل الإصدار لتجنب التعارض
+  flutter_secure_storage: ^9.2.4
 
   # واجهة المستخدم
   cupertino_icons: ^1.0.5
@@ -37,32 +37,29 @@ dependencies:
   provider: ^6.0.5
 
   # المكالمات الصوتية
-  flutter_webrtc: ^0.9.34  # مضاف لدعم المكالمات الصوتية
-  sdp_transform: ^0.3.2  # تم تحديث الإصدار لدعم null safety
-  permission_handler: ^10.4.3  # مضاف للتعامل مع أذونات الميكروفون
+  flutter_webrtc: ^0.9.34  # تأكد من استخدامه فقط على المنصات التي تدعمه
+  sdp_transform: ^0.3.2
+  permission_handler: ^10.4.3  # تجاهله على الويب
 
   # أدوات
-  intl: ^0.19.0  # تم تحديث الإصدار ليتوافق مع flutter_localizations
+  intl: ^0.19.0
   path_provider: ^2.1.0
   uuid: ^3.0.7
   http: ^1.1.0
   url_launcher: ^6.1.12
   share_plus: ^7.1.0
-  image_picker: ^1.0.2
-  file_picker: ^6.1.1  # تم تحديث الإصدار لإصلاح مشكلة platforms
-  flutter_sound: ^9.2.13  # تم تحديثه لإصلاح مشكلة channelCount
-  just_audio: ^0.9.34  # مضاف لتشغيل نغمات الرنين
-  image: ^4.0.17  # مضاف لدعم معالجة الصور في generate_icons.dart
-
-dependency_overrides:
+  image_picker: ^1.0.7  # تحديث الإصدار لأفضل دعم للويب
+  file_picker: ^6.1.1
+  flutter_sound: ^9.2.13  # ⚠️ يفضل تجاهله على الويب
+  just_audio: ^0.9.34
+  image: ^4.0.17
   flutter_plugin_android_lifecycle: ^2.0.27
-  file_picker: ^10.1.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.2
-  mockito: ^5.4.2  # تم تحديد إصدار محدد بدلاً من 'any'
+  mockito: ^5.4.2
   build_runner: ^2.4.6
 
 flutter:
