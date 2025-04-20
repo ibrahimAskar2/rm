@@ -1,1 +1,18 @@
+workflows:
+  android-release:
+    name: Build Android Release
+    max_build_duration: 60
+    environment:
+      flutter: stable
+    scripts:
+      # خطوة لتحديث الحزم
+      - name: Update dependencies
+        script: flutter pub upgrade
+        
+      # خطوة لتشغيل بناء التطبيق
+      - name: Build APK
+        script: flutter build apk --release
+
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
 
