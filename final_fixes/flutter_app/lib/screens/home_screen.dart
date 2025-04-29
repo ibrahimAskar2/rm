@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dashboard_screen.dart';
+import 'chats_list_screen.dart';
+import 'statistics_screen.dart';
+import 'profile_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,8 +17,8 @@ class _HomeScreenState extends State<HomeScreen> {
   
   // قائمة الشاشات التي سيتم عرضها في التبويبات
   final List<Widget> _screens = [
-    const MainDashboard(),
-    const ChatsList(),
+    const DashboardScreen(),
+    const ChatsListScreen(),
     const StatisticsScreen(),
     const ProfileScreen(),
     const SettingsScreen(),
@@ -334,190 +339,6 @@ class MainDashboard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// شاشة قائمة الدردشات
-class ChatsList extends StatelessWidget {
-  const ChatsList({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('الدردشات'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // البحث في الدردشات
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              // إنشاء دردشة جديدة
-            },
-          ),
-        ],
-      ),
-      body: ListView(
-        children: [
-          // قسم المجموعات
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'المجموعات',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          _buildChatItem(
-            context,
-            name: 'مجموعة الإدارة',
-            lastMessage: 'أحمد: الاجتماع غداً الساعة 10 صباحاً',
-            time: '10:30 ص',
-            isGroup: true,
-          ),
-          _buildChatItem(
-            context,
-            name: 'فريق التسويق',
-            lastMessage: 'محمد: تم إرسال التقرير',
-            time: 'أمس',
-            isGroup: true,
-          ),
-          
-          // قسم الدردشات الفردية
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              'الدردشات الفردية',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          _buildChatItem(
-            context,
-            name: 'أحمد محمد',
-            lastMessage: 'شكراً لك',
-            time: '12:45 م',
-            isOnline: true,
-          ),
-          _buildChatItem(
-            context,
-            name: 'سارة أحمد',
-            lastMessage: 'سأكون في المكتب غداً',
-            time: 'أمس',
-            isRead: false,
-          ),
-          _buildChatItem(
-            context,
-            name: 'محمد علي',
-            lastMessage: 'تم إرسال الملف',
-            time: '2023/4/7',
-          ),
-        ],
-      ),
-    );
-  }
-
-  // دالة لإنشاء عنصر دردشة
-  Widget _buildChatItem(
-    BuildContext context, {
-    required String name,
-    required String lastMessage,
-    required String time,
-    bool isGroup = false,
-    bool isOnline = false,
-    bool isRead = true,
-  }) {
-    return ListTile(
-      leading: Stack(
-        children: [
-          CircleAvatar(
-            backgroundColor: isGroup ? Colors.green : Colors.blue,
-            child: Icon(
-              isGroup ? Icons.group : Icons.person,
-              color: Colors.white,
-            ),
-          ),
-          if (isOnline)
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    width: 2,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-      title: Text(
-        name,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      subtitle: Row(
-        children: [
-          Expanded(
-            child: Text(
-              lastMessage,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: isRead ? Colors.grey : Colors.black,
-                fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            time,
-            style: TextStyle(
-              fontSize: 12,
-              color: isRead ? Colors.grey : Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          if (!isRead)
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                shape: BoxShape.circle,
-              ),
-              child: const Text(
-                '1',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                ),
-              ),
-            ),
-        ],
-      ),
-      onTap: () {
-        // فتح الدردشة
-      },
     );
   }
 }

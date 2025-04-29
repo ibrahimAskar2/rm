@@ -181,11 +181,9 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   
   final List<Widget> _screens = [
-    const HomeScreen(),
+    const DashboardScreen(),
     const ChatsListScreen(),
     const StatisticsScreen(),
-    const ReferencesScreen(),
-    const TasksScreen(),
     const ProfileScreen(),
     const SettingsScreen(),
   ];
@@ -202,11 +200,9 @@ class _MainScreenState extends State<MainScreen> {
           });
         },
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Theme.of(context).primaryColor,
-        unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+            icon: Icon(Icons.dashboard),
             label: 'الرئيسية',
           ),
           BottomNavigationBarItem(
@@ -216,14 +212,6 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
             label: 'الإحصائيات',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.description),
-            label: 'المرجعيات',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.task),
-            label: 'المهام',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
