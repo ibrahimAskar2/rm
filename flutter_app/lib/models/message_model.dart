@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 
 class Message {
   final String id;
@@ -189,70 +188,6 @@ class Message {
       type: type ?? this.type,
       mediaUrl: mediaUrl ?? this.mediaUrl,
       mediaData: mediaData ?? this.mediaData,
-    );
-  }
-}
-
-class ChatMessage {
-  final String id;
-  final String content;
-  final String senderId;
-  final String receiverId;
-  final DateTime timestamp;
-  final String type;
-  final String? imageUrl;
-
-  ChatMessage({
-    required this.id,
-    required this.content,
-    required this.senderId,
-    required this.receiverId,
-    required this.timestamp,
-    required this.type,
-    this.imageUrl,
-  });
-
-  factory ChatMessage.fromMap(Map<String, dynamic> map) {
-    return ChatMessage(
-      id: map['id'] as String,
-      content: map['content'] as String,
-      senderId: map['senderId'] as String,
-      receiverId: map['receiverId'] as String,
-      timestamp: DateTime.parse(map['timestamp'] as String),
-      type: map['type'] as String,
-      imageUrl: map['imageUrl'] as String?,
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'content': content,
-      'senderId': senderId,
-      'receiverId': receiverId,
-      'timestamp': timestamp.toIso8601String(),
-      'type': type,
-      'imageUrl': imageUrl,
-    };
-  }
-
-  ChatMessage copyWith({
-    String? id,
-    String? content,
-    String? senderId,
-    String? receiverId,
-    DateTime? timestamp,
-    String? type,
-    String? imageUrl,
-  }) {
-    return ChatMessage(
-      id: id ?? this.id,
-      content: content ?? this.content,
-      senderId: senderId ?? this.senderId,
-      receiverId: receiverId ?? this.receiverId,
-      timestamp: timestamp ?? this.timestamp,
-      type: type ?? this.type,
-      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 }

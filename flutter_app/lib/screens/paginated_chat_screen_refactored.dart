@@ -13,11 +13,11 @@ class PaginatedChatScreenRefactored extends StatefulWidget {
   final String receiverId;
 
   const PaginatedChatScreenRefactored({
-    Key? key,
+    super.key,
     required this.chatId,
     required this.chatName,
     required this.receiverId,
-  }) : super(key: key);
+  });
 
   @override
   State<PaginatedChatScreenRefactored> createState() => _PaginatedChatScreenRefactoredState();
@@ -36,10 +36,7 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
   bool _hasMore = true;
   DocumentSnapshot? _lastDocument;
   
-  // عدد الرسائل في كل تحميل
   final int _messagesPerLoad = 20;
-  
-  // معلومات المستخدم الحالي
   User? _currentUser;
 
   @override
@@ -47,8 +44,6 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     super.initState();
     _loadCurrentUser();
     _loadMessages();
-    
-    // إضافة مستمع للتمرير لتحميل المزيد من الرسائل
     _scrollController.addListener(_scrollListener);
   }
 
@@ -60,7 +55,6 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     super.dispose();
   }
 
-  // تحميل معلومات المستخدم الحالي
   Future<void> _loadCurrentUser() async {
     try {
       final userId = _firestoreService.currentUserId;
@@ -79,7 +73,6 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     }
   }
 
-  // مستمع التمرير لتحميل المزيد من الرسائل
   void _scrollListener() {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
       if (!_isLoading && _hasMore) {
@@ -88,7 +81,6 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     }
   }
 
-  // تحميل الرسائل الأولية
   Future<void> _loadMessages() async {
     if (_isLoading) return;
     
@@ -97,31 +89,29 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     });
     
     try {
-      final messagesData = await _firestoreService.getChatMessages(
-        chatId: widget.chatId,
-        limit: _messagesPerLoad,
-      );
+      final messagesSnapshot = await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(widget.chatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .limit(_messagesPerLoad)
+          .get();
       
-      final messages = messagesData.map((data) {
-        return Message.fromMap(data['id'], data);
-      }).toList();
+      final messages = messagesSnapshot.docs
+          .map((doc) => Message.fromMap(doc.id, doc.data()))
+          .toList();
       
       setState(() {
         _messages = messages;
         _isLoading = false;
         _hasMore = messages.length >= _messagesPerLoad;
-        
-        if (messages.isNotEmpty) {
-          // الحصول على آخر وثيقة للتحميل المتدرج
-          _lastDocument = messagesData.last['docSnapshot'] as DocumentSnapshot?;
-        }
+        _lastDocument = messages.isNotEmpty ? messagesSnapshot.docs.last : null;
       });
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
       
-      // إظهار رسالة خطأ
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('حدث خطأ أثناء تحميل الرسائل: $e')),
@@ -130,7 +120,6 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     }
   }
 
-  // تحميل المزيد من الرسائل
   Future<void> _loadMoreMessages() async {
     if (_isLoading || !_hasMore || _lastDocument == null) return;
     
@@ -139,32 +128,30 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     });
     
     try {
-      final moreMessagesData = await _firestoreService.getChatMessages(
-        chatId: widget.chatId,
-        limit: _messagesPerLoad,
-        lastDocument: _lastDocument,
-      );
+      final messagesSnapshot = await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(widget.chatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .startAfterDocument(_lastDocument!)
+          .limit(_messagesPerLoad)
+          .get();
       
-      final moreMessages = moreMessagesData.map((data) {
-        return Message.fromMap(data['id'], data);
-      }).toList();
+      final moreMessages = messagesSnapshot.docs
+          .map((doc) => Message.fromMap(doc.id, doc.data()))
+          .toList();
       
       setState(() {
         _messages.addAll(moreMessages);
         _isLoading = false;
         _hasMore = moreMessages.length >= _messagesPerLoad;
-        
-        if (moreMessages.isNotEmpty) {
-          // تحديث آخر وثيقة للتحميل المتدرج
-          _lastDocument = moreMessagesData.last['docSnapshot'] as DocumentSnapshot?;
-        }
+        _lastDocument = moreMessages.isNotEmpty ? messagesSnapshot.docs.last : _lastDocument;
       });
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
       
-      // إظهار رسالة خطأ
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('حدث خطأ أثناء تحميل المزيد من الرسائل: $e')),
@@ -173,7 +160,6 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     }
   }
 
-  // إرسال رسالة جديدة
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
@@ -186,14 +172,13 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
         throw Exception('لم يتم تعيين معرف المستخدم الحالي');
       }
       
-      // إنشاء رسالة جديدة باستخدام نموذج الرسالة
       final message = Message.createText(
         chatId: widget.chatId,
         senderId: currentUserId,
-        text: text,
+        receiverId: widget.receiverId,
+        content: text,
       );
       
-      // إضافة الرسالة إلى Firestore
       await FirebaseFirestore.instance
           .collection('chats')
           .doc(widget.chatId)
@@ -201,24 +186,21 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
           .doc(message.id)
           .set(message.toMap());
       
-      // إنشاء كلمات مفتاحية للبحث
       await _firestoreService.createMessageSearchKeywords(
         widget.chatId,
         message.id,
         text,
       );
       
-      // تحديث آخر رسالة في الدردشة
       await FirebaseFirestore.instance
           .collection('chats')
           .doc(widget.chatId)
           .update({
             'lastMessage': text,
-            'lastMessageTimestamp': Timestamp.now(),
+            'lastMessageTimestamp': Timestamp.fromDate(message.timestamp),
             'lastMessageSenderId': currentUserId,
           });
       
-      // إرسال إشعار للمستقبل - استخدام طريقة بديلة لإرسال الإشعار
       await _sendNotificationToReceiver(
         widget.receiverId,
         currentUserId,
@@ -226,16 +208,13 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
         text,
       );
       
-      // تحديث الإحصائيات
       await _firestoreService.updateUserStatistics(
         currentUserId,
         {'totalMessages': FieldValue.increment(1)},
       );
       
-      // تحميل الرسائل الجديدة
       _loadMessages();
     } catch (e) {
-      // إظهار رسالة خطأ
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('حدث خطأ أثناء إرسال الرسالة: $e')),
@@ -244,7 +223,6 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     }
   }
 
-  // طريقة بديلة لإرسال إشعار
   Future<void> _sendNotificationToReceiver(
     String receiverId,
     String senderId,
@@ -252,21 +230,14 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     String messageText,
   ) async {
     try {
-      // إنشاء إشعار في Firestore
       await FirebaseFirestore.instance.collection('notifications').add({
-        'userId': receiverId,
+        'receiverId': receiverId,
         'senderId': senderId,
         'senderName': senderName,
-        'type': 'message',
-        'title': 'رسالة جديدة',
-        'body': '$senderName: $messageText',
+        'message': messageText,
         'timestamp': Timestamp.now(),
         'isRead': false,
-        'targetId': widget.chatId,
-        'data': {
-          'chatId': widget.chatId,
-          'messagePreview': messageText,
-        },
+        'type': 'message',
       });
     } catch (e) {
       print('Error sending notification: $e');
@@ -279,24 +250,20 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
       appBar: AppBar(
         title: Text(widget.chatName),
         actions: [
-          // زر المكالمة الصوتية
           IconButton(
             icon: const Icon(Icons.call),
-            onPressed: _startVoiceCall,
+            onPressed: () => _startVoiceCall(),
           ),
-          
-          // زر البحث
           IconButton(
             icon: const Icon(Icons.search),
-            onPressed: _showSearchDialog,
+            onPressed: () => _showSearchDialog(),
           ),
         ],
       ),
       body: Column(
         children: [
-          // قائمة الرسائل
           Expanded(
-            child: _messages.isEmpty
+            child: _messages.isEmpty && !_isLoading
                 ? const Center(child: Text('لا توجد رسائل'))
                 : ListView.builder(
                     controller: _scrollController,
@@ -311,31 +278,21 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
                           ),
                         );
                       }
-                      
+
                       final message = _messages[index];
-                      return _buildMessageItem(message);
+                      final isMe = message.senderId == _firestoreService.currentUserId;
+
+                      return _buildMessageItem(message, isMe);
                     },
                   ),
           ),
-          
-          // مؤشر التحميل
-          if (_isLoading && _messages.isEmpty)
-            const Center(child: CircularProgressIndicator()),
-          
-          // حقل إدخال الرسالة
-          _buildMessageInput(),
+          _buildInputArea(),
         ],
       ),
     );
   }
 
-  // بناء عنصر الرسالة
-  Widget _buildMessageItem(Message message) {
-    final currentUserId = _firestoreService.currentUserId;
-    final isMe = message.senderId == currentUserId;
-    
-    final time = '${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}';
-    
+  Widget _buildMessageItem(Message message, bool isMe) {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -343,34 +300,27 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isMe ? Colors.blue[100] : Colors.grey[200],
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            Text(
-              message.text,
-              style: const TextStyle(fontSize: 16),
-            ),
+            if (message.type == 'image')
+              Image.network(
+                message.mediaUrlString,
+                width: 200,
+                height: 200,
+                fit: BoxFit.cover,
+              )
+            else
+              Text(message.content),
             const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  time,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(width: 4),
-                if (isMe)
-                  Icon(
-                    message.isRead ? Icons.done_all : Icons.done,
-                    size: 14,
-                    color: message.isRead ? Colors.blue : Colors.grey[600],
-                  ),
-              ],
+            Text(
+              _formatTimestamp(message.timestamp),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
             ),
           ],
         ),
@@ -378,47 +328,32 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     );
   }
 
-  // بناء حقل إدخال الرسالة
-  Widget _buildMessageInput() {
+  Widget _buildInputArea() {
     return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            blurRadius: 4,
-            offset: const Offset(0, -1),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.all(8.0),
       child: Row(
         children: [
-          // زر إرفاق ملف
           IconButton(
             icon: const Icon(Icons.attach_file),
-            onPressed: () {
-              // تنفيذ إرفاق ملف
-            },
+            onPressed: () => _showAttachmentOptions(),
           ),
-          
-          // حقل إدخال الرسالة
           Expanded(
             child: TextField(
               controller: _messageController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'اكتب رسالة...',
-                border: InputBorder.none,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
               ),
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
             ),
           ),
-          
-          // زر إرسال الرسالة
           IconButton(
             icon: const Icon(Icons.send),
-            color: Theme.of(context).primaryColor,
             onPressed: _sendMessage,
           ),
         ],
@@ -426,141 +361,88 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     );
   }
 
-  // بدء مكالمة صوتية
-  void _startVoiceCall() {
-    if (_currentUser == null) {
+  String _formatTimestamp(DateTime timestamp) {
+    return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _startVoiceCall() async {
+    final currentUserId = _firestoreService.currentUserId;
+    if (currentUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لم يتم تحميل معلومات المستخدم الحالي')),
+        const SnackBar(content: Text('لم يتم تعيين معرف المستخدم الحالي')),
       );
       return;
     }
-    
-    // بدء مكالمة جديدة باستخدام خدمة المكالمات
-    _callService.startCall(
-      callerId: _currentUser!.id,
-      callerName: _currentUser!.name,
-      callerImage: _currentUser!.imageUrl,
-      receiverId: widget.receiverId,
-      receiverName: widget.chatName,
-    ).then((call) {
-      if (call != null) {
-        // فتح شاشة المكالمة
+
+    try {
+      final callId = await _callService.initiateCall(
+        currentUserId,
+        widget.receiverId,
+        'voice',
+      );
+
+      if (mounted) {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => CallScreen(
-              call: call,
-              isIncoming: false,
+              callId: callId,
+              isOutgoing: true,
+              receiverId: widget.receiverId,
+              receiverName: widget.chatName,
             ),
-          ),
-        );
-      } else {
-        // إظهار رسالة خطأ
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('فشل بدء المكالمة')),
-        );
-      }
-    });
-  }
-
-  // عرض نافذة البحث
-  void _showSearchDialog() {
-    final searchController = TextEditingController();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('بحث في الرسائل'),
-        content: TextField(
-          controller: searchController,
-          decoration: const InputDecoration(
-            hintText: 'أدخل نص البحث...',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          TextButton(
-            onPressed: () {
-              final searchText = searchController.text.trim();
-              if (searchText.isNotEmpty) {
-                Navigator.pop(context);
-                _searchMessages(searchText);
-              }
-            },
-            child: const Text('بحث'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // البحث في الرسائل
-  Future<void> _searchMessages(String searchText) async {
-    try {
-      final searchResultsData = await _firestoreService.searchChatMessages(
-        chatId: widget.chatId,
-        searchText: searchText,
-      );
-      
-      final searchResults = searchResultsData.map((data) {
-        return Message.fromMap(data['id'], data);
-      }).toList();
-      
-      if (searchResults.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('لم يتم العثور على نتائج')),
-          );
-        }
-        return;
-      }
-      
-      // عرض نتائج البحث
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('نتائج البحث عن "$searchText"'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: searchResults.length,
-                itemBuilder: (context, index) {
-                  final message = searchResults[index];
-                  final date = '${message.timestamp.day}/${message.timestamp.month}/${message.timestamp.year}';
-                  final time = '${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}';
-                  
-                  return ListTile(
-                    title: Text(message.text),
-                    subtitle: Text('$date $time'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      // التمرير إلى الرسالة
-                      // في التطبيق الفعلي، سيتم تنفيذ التمرير إلى الرسالة
-                    },
-                  );
-                },
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إغلاق'),
-              ),
-            ],
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ أثناء البحث: $e')),
+          SnackBar(content: Text('حدث خطأ أثناء بدء المكالمة: $e')),
         );
       }
     }
+  }
+
+  void _showSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => SearchMessagesDialog(
+        chatId: widget.chatId,
+        onMessageSelected: (message) {
+          // تنفيذ التمرير إلى الرسالة المحددة
+        },
+      ),
+    );
+  }
+
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => AttachmentOptionsSheet(
+        onImageSelected: (file) async {
+          try {
+            final currentUserId = _firestoreService.currentUserId;
+            if (currentUserId == null) {
+              throw Exception('لم يتم تعيين معرف المستخدم الحالي');
+            }
+
+            final message = await _chatService.sendImageMessage(
+              chatId: widget.chatId,
+              senderId: currentUserId,
+              receiverId: widget.receiverId,
+              imageFile: file,
+            );
+
+            _loadMessages();
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('حدث خطأ أثناء إرسال الصورة: $e')),
+              );
+            }
+          }
+        },
+      ),
+    );
   }
 }

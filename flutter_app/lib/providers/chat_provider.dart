@@ -3,24 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/message_model.dart';
 import '../models/user_model.dart';
 
-class ChatMessage {
-  final String id;
-  final String senderId;
-  final String senderName;
-  final String content;
-  final DateTime timestamp;
-  final bool isRead;
-
-  ChatMessage({
-    required this.id,
-    required this.senderId,
-    required this.senderName,
-    required this.content,
-    required this.timestamp,
-    this.isRead = false,
-  });
-}
-
 class ChatConversation {
   final String id;
   final List<String> participantIds;
@@ -42,12 +24,12 @@ class ChatConversation {
 class ChatProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _currentChatId;
-  List<ChatMessage> _messages = [];
+  List<Message> _messages = [];
   Map<String, User> _usersInfo = {};
   bool _isLoading = false;
 
   String? get currentChatId => _currentChatId;
-  List<ChatMessage> get messages => _messages;
+  List<Message> get messages => _messages;
   Map<String, User> get usersInfo => _usersInfo;
   bool get isLoading => _isLoading;
 
@@ -72,7 +54,7 @@ class ChatProvider extends ChangeNotifier {
           .get();
 
       _messages = messagesSnapshot.docs
-          .map((doc) => ChatMessage.fromMap(doc.id, doc.data()))
+          .map((doc) => Message.fromMap(doc.id, doc.data()))
           .toList();
 
       // تحميل معلومات المستخدمين
@@ -103,16 +85,15 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> sendTextMessage(String text, String senderId) async {
+  Future<void> sendTextMessage(String content, String senderId, String receiverId) async {
     if (_currentChatId == null) return;
 
     try {
-      final message = ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+      final message = Message.createText(
+        chatId: _currentChatId!,
         senderId: senderId,
-        text: text,
-        timestamp: DateTime.now(),
-        type: 'text',
+        receiverId: receiverId,
+        content: content,
       );
 
       await _firestore
@@ -129,16 +110,18 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> sendImageMessage(String imageUrl, String senderId) async {
+  Future<void> sendImageMessage(String imageUrl, String senderId, String receiverId) async {
     if (_currentChatId == null) return;
 
     try {
-      final message = ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+      final message = Message.createMedia(
+        chatId: _currentChatId!,
         senderId: senderId,
-        imageUrl: imageUrl,
-        timestamp: DateTime.now(),
-        type: 'image',
+        receiverId: receiverId,
+        content: 'صورة',
+        mediaType: 'image',
+        mediaUrl: imageUrl,
+        mediaData: {'url': imageUrl},
       );
 
       await _firestore
@@ -166,12 +149,12 @@ class ChatProvider extends ChangeNotifier {
           .collection('chats')
           .doc(_currentChatId)
           .collection('messages')
-          .where('text', isGreaterThanOrEqualTo: query)
-          .where('text', isLessThanOrEqualTo: query + '\uf8ff')
+          .where('content', isGreaterThanOrEqualTo: query)
+          .where('content', isLessThanOrEqualTo: query + '\uf8ff')
           .get();
 
       _messages = messagesSnapshot.docs
-          .map((doc) => ChatMessage.fromMap(doc.id, doc.data()))
+          .map((doc) => Message.fromMap(doc.id, doc.data()))
           .toList();
 
       _isLoading = false;
@@ -187,16 +170,19 @@ class ChatProvider extends ChangeNotifier {
     if (_currentChatId == null) return;
 
     try {
+      final message = _messages.firstWhere((m) => m.id == messageId);
+      final updatedMessage = message.markAsReadBy(_usersInfo.keys.first);
+
       await _firestore
           .collection('chats')
           .doc(_currentChatId)
           .collection('messages')
           .doc(messageId)
-          .update({'isRead': true});
+          .update(updatedMessage.toMap());
 
-      final index = _messages.indexWhere((message) => message.id == messageId);
+      final index = _messages.indexWhere((m) => m.id == messageId);
       if (index != -1) {
-        _messages[index] = _messages[index].copyWith(isRead: true);
+        _messages[index] = updatedMessage;
         notifyListeners();
       }
     } catch (e) {
