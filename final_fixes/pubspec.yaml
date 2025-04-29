@@ -66,8 +66,6 @@ dependencies:
   photo_view: ^0.14.0
   flutter_staggered_grid_view: ^0.7.0
 
-  # ❌ حذف flutter_sound لتفادي مشاكل منصة الويب
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
