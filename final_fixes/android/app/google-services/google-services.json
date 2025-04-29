@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "123456789012",
-    "project_id": "ansar-team-app",
-    "storage_bucket": "ansar-team-app.appspot.com"
+    "project_number": "631101559036",
+    "project_id": "app-ansar",
+    "storage_bucket": "app-ansar.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
+        "mobilesdk_app_id": "1:631101559036:android:80e24ebd5341c2650e0779",
         "android_client_info": {
           "package_name": "com.ansar.ansar_team"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDummyKeyForDevelopmentPurposesOnly"
+          "current_key": "AIzaSyCCSydAGDIfKlk8pYQAHCN-bOVe55QWCr0"
         }
       ],
       "services": {
