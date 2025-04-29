@@ -10,6 +10,7 @@ workflows:
         - google_credentials
       vars:
         PACKAGE_NAME: "com.ansar.ansar_team"
+        GRADLE_VERSION: "7.5"
     scripts:
       - name: Get Flutter packages
         script: flutter pub get
