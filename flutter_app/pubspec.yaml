@@ -71,6 +71,10 @@ dev_dependencies:
   mockito: ^5.4.2
   build_runner: ^2.4.6
 
+dependency_overrides:
+  file_picker: ^6.1.1
+  sdp_transform: ^0.3.2
+
 flutter:
   uses-material-design: true
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 
@@ -22,7 +22,7 @@ class User {
 class UserProvider extends ChangeNotifier {
   User? _user;
   bool _isLoading = true;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   User? get user => _user;
@@ -34,13 +34,13 @@ class UserProvider extends ChangeNotifier {
       notifyListeners();
 
       // تسجيل الدخول باستخدام Firebase Auth
-      final UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       // الحصول على بيانات المستخدم من Firestore
-      final DocumentSnapshot userDoc = await _firestore
+      final userDoc = await _firestore
           .collection('users')
           .doc(userCredential.user!.uid)
           .get();
@@ -82,9 +82,9 @@ class UserProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      final User? currentUser = _auth.currentUser;
+      final currentUser = _auth.currentUser;
       if (currentUser != null) {
-        final DocumentSnapshot userDoc = await _firestore
+        final userDoc = await _firestore
             .collection('users')
             .doc(currentUser.uid)
             .get();
