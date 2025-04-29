@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task_model.dart';
 import '../models/user_model.dart';
+import 'firestore_service.dart';
 
 class TaskService {
   // Singleton pattern
@@ -8,8 +9,8 @@ class TaskService {
   factory TaskService() => _instance;
   TaskService._internal();
 
-  // Firebase instance
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirestoreService _firestore = FirestoreService();
+  final CollectionReference _tasksCollection = FirebaseFirestore.instance.collection('tasks');
 
   // الحصول على قائمة المهام المخصصة للمستخدم مع التحميل المتدرج
   Future<List<Task>> getUserTasks({
@@ -19,10 +20,9 @@ class TaskService {
     String? status,
   }) async {
     try {
-      Query query = _firestore
-          .collection('tasks')
-          .where('assignedTo', isEqualTo: userId)
-          .orderBy('dueDate', descending: false);
+      Query query = _tasksCollection
+          .where('assigneeId', isEqualTo: userId)
+          .orderBy('createdAt', descending: false);
       
       // تصفية حسب الحالة إذا تم تحديدها
       if (status != null) {
@@ -54,10 +54,7 @@ class TaskService {
   // الحصول على تفاصيل مهمة محددة
   Future<Task?> getTaskDetails(String taskId) async {
     try {
-      final docSnapshot = await _firestore
-          .collection('tasks')
-          .doc(taskId)
-          .get();
+      final docSnapshot = await _tasksCollection.doc(taskId).get();
       
       if (!docSnapshot.exists) {
         return null;
@@ -74,142 +71,78 @@ class TaskService {
   Future<Task> createTask({
     required String title,
     required String description,
-    required String assignedBy,
-    required String assignedByName,
-    required String assignedTo,
-    required String assignedToName,
-    required DateTime dueDate,
-    int priority = 2,
+    required String assigneeId,
+    required String assigneeName,
+    required String assignerId,
+    required String assignerName,
+    DateTime? dueDate,
+    String? priority,
+    List<String>? tags,
   }) async {
-    try {
-      // إنشاء كائن Task جديد
-      final task = Task.create(
-        title: title,
-        description: description,
-        assignedBy: assignedBy,
-        assignedByName: assignedByName,
-        assignedTo: assignedTo,
-        assignedToName: assignedToName,
-        dueDate: dueDate,
-        priority: priority,
-      );
-      
-      // حفظ المهمة في Firestore
-      await _firestore
-          .collection('tasks')
-          .doc(task.id)
-          .set(task.toMap());
-      
-      return task;
-    } catch (e) {
-      print('Error creating task: $e');
-      rethrow;
-    }
+    final task = Task(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: title,
+      description: description,
+      assigneeId: assigneeId,
+      assigneeName: assigneeName,
+      assignerId: assignerId,
+      assignerName: assignerName,
+      status: 'pending',
+      createdAt: DateTime.now(),
+      dueDate: dueDate,
+      priority: priority ?? 'medium',
+      tags: tags ?? [],
+    );
+
+    await _tasksCollection.doc(task.id).set(task.toMap());
+    return task;
   }
 
   // تحديث حالة مهمة
-  Future<Task> updateTaskStatus(String taskId, String newStatus) async {
-    try {
-      // الحصول على المهمة الحالية
-      final task = await getTaskDetails(taskId);
-      if (task == null) {
-        throw Exception('المهمة غير موجودة');
-      }
-      
-      // تحديث حالة المهمة
-      final updatedTask = task.updateStatus(newStatus);
-      
-      // حفظ التغييرات في Firestore
-      await _firestore
-          .collection('tasks')
-          .doc(taskId)
-          .update({
-            'status': newStatus,
-            'completedAt': updatedTask.completedAt != null ? Timestamp.fromDate(updatedTask.completedAt!) : null,
-          });
-      
-      return updatedTask;
-    } catch (e) {
-      print('Error updating task status: $e');
-      rethrow;
-    }
+  Future<void> updateTaskStatus(String taskId, String status) async {
+    await _tasksCollection.doc(taskId).update({
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   // إضافة تعليق إلى مهمة
-  Future<Task> addCommentToTask({
-    required String taskId,
-    required String userId,
-    required String userName,
-    String userImage = '',
-    required String text,
-  }) async {
-    try {
-      // إنشاء كائن Comment جديد
-      final comment = Comment.create(
-        userId: userId,
-        userName: userName,
-        userImage: userImage,
-        text: text,
-      );
-      
-      // الحصول على المهمة الحالية
-      final task = await getTaskDetails(taskId);
-      if (task == null) {
-        throw Exception('المهمة غير موجودة');
-      }
-      
-      // إضافة التعليق إلى المهمة
-      final updatedTask = task.addComment(comment);
-      
-      // حفظ التغييرات في Firestore
-      await _firestore
-          .collection('tasks')
-          .doc(taskId)
-          .update({
-            'comments': updatedTask.comments.map((comment) => comment.toMap()).toList(),
-          });
-      
-      return updatedTask;
-    } catch (e) {
-      print('Error adding comment to task: $e');
-      rethrow;
-    }
+  Future<void> addComment(String taskId, String text, String userId, String userName) async {
+    final comment = {
+      'text': text,
+      'userId': userId,
+      'userName': userName,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    await _tasksCollection.doc(taskId).update({
+      'comments': FieldValue.arrayUnion([comment]),
+    });
   }
 
   // إضافة مرفق إلى مهمة
-  Future<Task> addAttachmentToTask(String taskId, String attachmentUrl) async {
-    try {
-      // الحصول على المهمة الحالية
-      final task = await getTaskDetails(taskId);
-      if (task == null) {
-        throw Exception('المهمة غير موجودة');
-      }
-      
-      // إضافة المرفق إلى المهمة
-      final updatedTask = task.addAttachment(attachmentUrl);
-      
-      // حفظ التغييرات في Firestore
-      await _firestore
-          .collection('tasks')
-          .doc(taskId)
-          .update({
-            'attachments': updatedTask.attachments,
-          });
-      
-      return updatedTask;
-    } catch (e) {
-      print('Error adding attachment to task: $e');
-      rethrow;
-    }
+  Future<void> addAttachment(String taskId, String name, String type, int size, String url, String uploaderId, String uploaderName) async {
+    final attachment = {
+      'name': name,
+      'type': type,
+      'size': size,
+      'url': url,
+      'uploaderId': uploaderId,
+      'uploaderName': uploaderName,
+      'uploadedAt': FieldValue.serverTimestamp(),
+    };
+
+    await _tasksCollection.doc(taskId).update({
+      'attachments': FieldValue.arrayUnion([attachment]),
+    });
   }
 
   // الحصول على إحصائيات المهام للمستخدم
   Future<Map<String, dynamic>> getTaskStatistics(String userId) async {
     try {
       // الحصول على جميع مهام المستخدم
-      final querySnapshot = await _firestore
-          .collection('tasks')
-          .where('assignedTo', isEqualTo: userId)
+      final querySnapshot = await _tasksCollection
+          .where('assigneeId', isEqualTo: userId)
           .get();
       
       // تحويل البيانات إلى قائمة من كائنات Task
@@ -245,5 +178,30 @@ class TaskService {
       print('Error getting task statistics: $e');
       rethrow;
     }
+  }
+
+  Stream<List<Task>> getTasksStream(String userId) {
+    return _tasksCollection
+        .where('assigneeId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return Task.fromMap(data);
+      }).toList();
+    });
+  }
+
+  Future<List<Task>> searchTasks(String query) async {
+    final snapshot = await _tasksCollection
+        .where('title', isGreaterThanOrEqualTo: query)
+        .where('title', isLessThanOrEqualTo: query + '\uf8ff')
+        .get();
+
+    return snapshot.docs.map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return Task.fromMap(data);
+    }).toList();
   }
 }

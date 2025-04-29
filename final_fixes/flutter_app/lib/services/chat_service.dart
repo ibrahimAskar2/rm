@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/message_model.dart';
 import '../models/user_model.dart';
+import 'firestore_service.dart';
 
 class ChatService {
   // Singleton pattern
@@ -13,6 +14,9 @@ class ChatService {
   // Firebase instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  final FirestoreService _firestoreService = FirestoreService();
+  final CollectionReference _messagesCollection = FirebaseFirestore.instance.collection('messages');
+  final CollectionReference _chatsCollection = FirebaseFirestore.instance.collection('chats');
 
   // الحصول على قائمة الدردشات للمستخدم
   Stream<QuerySnapshot> getChats() {
@@ -443,5 +447,83 @@ class ChatService {
       print('Error removing user from group chat: $e');
       rethrow;
     }
+  }
+
+  Future<void> sendMessage({
+    required String chatId,
+    required String senderId,
+    required String senderName,
+    required String text,
+    String? imageUrl,
+    String? fileUrl,
+    String? fileType,
+    String? fileName,
+  }) async {
+    final message = {
+      'chatId': chatId,
+      'senderId': senderId,
+      'senderName': senderName,
+      'text': text,
+      'imageUrl': imageUrl,
+      'fileUrl': fileUrl,
+      'fileType': fileType,
+      'fileName': fileName,
+      'timestamp': FieldValue.serverTimestamp(),
+      'isRead': false,
+    };
+
+    await _messagesCollection.add(message);
+    await _updateChatLastMessage(chatId, text);
+  }
+
+  Future<void> _updateChatLastMessage(String chatId, String text) async {
+    await _chatsCollection.doc(chatId).update({
+      'lastMessage': text,
+      'lastMessageTime': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> markMessageAsRead(String messageId) async {
+    await _messagesCollection.doc(messageId).update({
+      'isRead': true,
+    });
+  }
+
+  Stream<List<Message>> getMessagesStream(String chatId) {
+    return _messagesCollection
+        .where('chatId', isEqualTo: chatId)
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return Message.fromMap(data);
+      }).toList();
+    });
+  }
+
+  Future<List<Message>> searchMessages(String chatId, String searchText) async {
+    final snapshot = await _messagesCollection
+        .where('chatId', isEqualTo: chatId)
+        .where('text', isGreaterThanOrEqualTo: searchText)
+        .where('text', isLessThanOrEqualTo: searchText + '\uf8ff')
+        .get();
+
+    return snapshot.docs.map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return Message.fromMap(data);
+    }).toList();
+  }
+
+  Future<void> deleteMessage(String messageId) async {
+    await _messagesCollection.doc(messageId).delete();
+  }
+
+  Future<void> updateMessage(String messageId, String newText) async {
+    await _messagesCollection.doc(messageId).update({
+      'text': newText,
+      'isEdited': true,
+      'editedAt': FieldValue.serverTimestamp(),
+    });
   }
 }

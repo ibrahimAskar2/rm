@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../providers/chat_provider.dart';
 import '../providers/user_provider.dart';
+import '../models/message_model.dart';
+import '../services/chat_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -28,10 +30,13 @@ class _ChatScreenState extends State<ChatScreen> {
   String _searchQuery = '';
   bool _isSearching = false;
   List<Map<String, dynamic>> _searchResults = [];
+  final ChatService _chatService = ChatService();
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _loadMessages();
     // تحديد الدردشة الحالية وتحميل رسائلها
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<ChatProvider>(context, listen: false).setCurrentChat(widget.chatId);
@@ -43,6 +48,23 @@ class _ChatScreenState extends State<ChatScreen> {
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadMessages() async {
+    setState(() => _isLoading = true);
+    try {
+      await _chatService.getMessagesStream(widget.chatId).first;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في تحميل الرسائل: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   // التمرير إلى أسفل القائمة عند إضافة رسائل جديدة
@@ -99,19 +121,21 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // إرسال صورة
   Future<void> _sendImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-      final success = await chatProvider.sendImageMessage(
-        widget.chatId,
-        File(pickedFile.path),
-      );
-
-      if (!success && mounted) {
+    try {
+      final imageUrl = await context.read<ChatProvider>().pickAndUploadImage();
+      if (imageUrl != null && mounted) {
+        await _chatService.sendMessage(
+          chatId: widget.chatId,
+          senderId: context.read<ChatProvider>().currentUserId,
+          senderName: context.read<ChatProvider>().currentUserName,
+          text: '',
+          imageUrl: imageUrl,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('فشل إرسال الصورة')),
+          SnackBar(content: Text('خطأ في إرسال الصورة: $e')),
         );
       }
     }
@@ -220,30 +244,33 @@ class _ChatScreenState extends State<ChatScreen> {
           else
             // عرض المحادثة
             Expanded(
-              child: Consumer2<ChatProvider, UserProvider>(
-                builder: (context, chatProvider, userProvider, child) {
-                  final messages = chatProvider.messages[widget.chatId] ?? [];
-                  final currentUserId = userProvider.user?.uid;
+              child: StreamBuilder<List<Message>>(
+                stream: _chatService.getMessagesStream(widget.chatId),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(child: Text('خطأ: ${snapshot.error}'));
+                  }
 
-                  if (chatProvider.isLoading && messages.isEmpty) {
+                  if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
+                  final messages = snapshot.data!;
                   return ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(8.0),
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];
-                      final isMe = message['senderId'] == currentUserId;
+                      final isMe = message.senderId == context.read<ChatProvider>().currentUserId;
                       
                       // تحديث حالة قراءة الرسالة
-                      if (!isMe && currentUserId != null && 
-                          !message['readBy'].contains(currentUserId)) {
-                        _markMessageAsRead(message['id']);
+                      if (!isMe && message.senderId != null && 
+                          !message.readBy.contains(message.senderId)) {
+                        _markMessageAsRead(message.id);
                       }
                       
-                      return _buildMessageItem(message, isMe, chatProvider);
+                      return _buildMessageBubble(message);
                     },
                   );
                 },
@@ -311,125 +338,45 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // بناء عنصر الرسالة
-  Widget _buildMessageItem(Map<String, dynamic> message, bool isMe, ChatProvider chatProvider) {
-    final userInfo = chatProvider.usersInfo[message['senderId']];
-    final userName = userInfo?['name'] ?? 'مستخدم';
-    
+  Widget _buildMessageBubble(Message message) {
+    final isMe = message.senderId == context.read<ChatProvider>().currentUserId;
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isMe ? Colors.blue.shade100 : Colors.grey.shade200,
+          color: isMe ? Theme.of(context).primaryColor : Colors.grey[300],
           borderRadius: BorderRadius.circular(16),
-        ),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.7,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // اسم المرسل (للمجموعات)
-            if (widget.isGroup && !isMe)
+            if (message.imageUrl != null)
+              Image.network(
+                message.imageUrl!,
+                width: 200,
+                height: 200,
+                fit: BoxFit.cover,
+              ),
+            if (message.text.isNotEmpty)
               Text(
-                userName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                message.text,
+                style: TextStyle(
+                  color: isMe ? Colors.white : Colors.black,
                 ),
               ),
-            
-            // محتوى الرسالة
-            _buildMessageContent(message),
-            
-            // وقت الرسالة وحالة القراءة
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _formatTimestamp(message['timestamp']),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                if (isMe) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    message['readBy'].length > 1
-                        ? Icons.done_all
-                        : Icons.done,
-                    size: 12,
-                    color: message['readBy'].length > 1
-                        ? Colors.blue
-                        : Colors.grey[600],
-                  ),
-                ],
-              ],
+            Text(
+              message.senderName,
+              style: TextStyle(
+                fontSize: 12,
+                color: isMe ? Colors.white70 : Colors.black54,
+              ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  // بناء محتوى الرسالة حسب نوعها
-  Widget _buildMessageContent(Map<String, dynamic> message) {
-    switch (message['type']) {
-      case 'text':
-        return Text(message['text'] ?? '');
-      case 'image':
-        return Column(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                message['url'] ?? '',
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) {
-                    return child;
-                  }
-                  return Container(
-                    height: 150,
-                    width: double.infinity,
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 150,
-                    width: double.infinity,
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: Icon(Icons.error),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      case 'voice':
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.play_arrow),
-              onPressed: () {
-                // في التطبيق الفعلي، سيتم هنا تشغيل الرسالة الصوتية
-              },
-            ),
-            const Text('رسالة صوتية'),
-          ],
-        );
-      default:
-        return const Text('نوع رسالة غير معروف');
-    }
   }
 
   // تنسيق الوقت

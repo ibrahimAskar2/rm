@@ -17,68 +17,110 @@ class CallNotificationService {
   final CallService _callService = CallService();
   
   // Notifications
-  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   
   // Streams
   final _incomingCallController = StreamController<Call>.broadcast();
   Stream<Call> get incomingCallStream => _incomingCallController.stream;
   
   // تهيئة خدمة الإشعارات
-  Future<void> initialize(BuildContext context) async {
-    // تهيئة إشعارات Firebase
-    await _initializeFirebaseMessaging();
-    
-    // تهيئة الإشعارات المحلية
-    await _initializeLocalNotifications(context);
-    
-    // الاستماع للمكالمات الواردة
-    _listenForIncomingCalls(context);
-  }
-
-  // تهيئة إشعارات Firebase
-  Future<void> _initializeFirebaseMessaging() async {
-    // طلب إذن الإشعارات
-    final settings = await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-    
-    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      // الاستماع للإشعارات في الخلفية
-      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-      
-      // الاستماع للإشعارات في المقدمة
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        _handleFirebaseMessage(message);
-      });
-      
-      // الاستماع للإشعارات عند النقر عليها
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        _handleFirebaseMessageOpenedApp(message);
-      });
-    }
-  }
-
-  // تهيئة الإشعارات المحلية
-  Future<void> _initializeLocalNotifications(BuildContext context) async {
-    // تهيئة إعدادات الإشعارات المحلية
-    const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initializationSettingsIOS = DarwinInitializationSettings(
+  Future<void> initialize() async {
+    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
-    const initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
+    const InitializationSettings initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
     );
-    
-    await _flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        _handleLocalNotificationTap(response, context);
-      },
+
+    await _notifications.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: _onNotificationTapped,
+    );
+
+    // إعداد إشعارات Firebase
+    FirebaseMessaging.onMessage.listen(_handleFirebaseMessage);
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleFirebaseMessageOpened);
+  }
+
+  Future<void> _onNotificationTapped(NotificationResponse response) async {
+    if (response.payload != null) {
+      final Map<String, dynamic> data = Map<String, dynamic>.from(
+        response.payload as Map<String, dynamic>
+      );
+      if (data['type'] == 'call') {
+        final String callId = data['callId'];
+        final String action = data['action'];
+        
+        if (action == 'accept') {
+          await _callService.acceptCall(callId);
+        } else if (action == 'reject') {
+          await _callService.rejectCall(callId);
+        }
+      }
+    }
+  }
+
+  Future<void> _handleFirebaseMessage(RemoteMessage message) async {
+    if (message.data['type'] == 'call') {
+      await showCallNotification(
+        title: message.notification?.title ?? 'مكالمة واردة',
+        body: message.notification?.body ?? 'لديك مكالمة واردة',
+        payload: message.data,
+      );
+    }
+  }
+
+  Future<void> _handleFirebaseMessageOpened(RemoteMessage message) async {
+    if (message.data['type'] == 'call') {
+      final String callId = message.data['callId'];
+      final String action = message.data['action'];
+      
+      if (action == 'accept') {
+        await _callService.acceptCall(callId);
+      } else if (action == 'reject') {
+        await _callService.rejectCall(callId);
+      }
+    }
+  }
+
+  Future<void> showCallNotification({
+    required String title,
+    required String body,
+    required Map<String, dynamic> payload,
+  }) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'call_channel',
+      'المكالمات',
+      channelDescription: 'إشعارات المكالمات الصوتية',
+      importance: Importance.high,
+      priority: Priority.high,
+      sound: RawResourceAndroidNotificationSound('ringtone'),
+      playSound: true,
+      enableVibration: true,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      sound: 'ringtone.wav',
+    );
+
+    const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _notifications.show(
+      DateTime.now().millisecond,
+      title,
+      body,
+      notificationDetails,
+      payload: payload.toString(),
     );
   }
 
@@ -97,100 +139,6 @@ class CallNotificationService {
     }
   }
 
-  // معالجة رسائل Firebase في المقدمة
-  void _handleFirebaseMessage(RemoteMessage message) {
-    if (message.data['type'] == 'call') {
-      // استخراج بيانات المكالمة
-      final callId = message.data['callId'];
-      final callerId = message.data['callerId'];
-      final callerName = message.data['callerName'];
-      final callerImage = message.data['callerImage'] ?? '';
-      final receiverId = message.data['receiverId'];
-      final receiverName = message.data['receiverName'];
-      final receiverImage = message.data['receiverImage'] ?? '';
-      
-      // إنشاء كائن المكالمة
-      final call = Call(
-        id: callId,
-        callerId: callerId,
-        callerName: callerName,
-        callerImage: callerImage,
-        receiverId: receiverId,
-        receiverName: receiverName,
-        receiverImage: receiverImage,
-        startTime: DateTime.now(),
-        status: 'ongoing',
-      );
-      
-      // إرسال المكالمة إلى تدفق المكالمات الواردة
-      _incomingCallController.add(call);
-      
-      // عرض إشعار مكالمة واردة
-      _showIncomingCallNotification(call);
-    }
-  }
-
-  // معالجة النقر على رسائل Firebase
-  void _handleFirebaseMessageOpenedApp(RemoteMessage message) {
-    if (message.data['type'] == 'call') {
-      // استخراج بيانات المكالمة
-      final callId = message.data['callId'];
-      
-      // الحصول على تفاصيل المكالمة من Firestore
-      // في التطبيق الفعلي، سيتم استخدام Firestore للحصول على تفاصيل المكالمة
-    }
-  }
-
-  // معالجة النقر على الإشعارات المحلية
-  void _handleLocalNotificationTap(NotificationResponse response, BuildContext context) {
-    final payload = response.payload;
-    if (payload != null && payload.startsWith('call:')) {
-      final callId = payload.substring(5);
-      
-      // الحصول على تفاصيل المكالمة من Firestore
-      // في التطبيق الفعلي، سيتم استخدام Firestore للحصول على تفاصيل المكالمة
-    }
-  }
-
-  // عرض إشعار مكالمة واردة
-  Future<void> _showIncomingCallNotification(Call call) async {
-    // تعريف قنوات الإشعارات للأندرويد
-    const androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      'call_channel',
-      'المكالمات',
-      channelDescription: 'إشعارات المكالمات الواردة',
-      importance: Importance.max,
-      priority: Priority.high,
-      sound: RawResourceAndroidNotificationSound('ringtone'),
-      playSound: true,
-      ongoing: true,
-      autoCancel: false,
-    );
-    
-    // تعريف إعدادات الإشعارات للـ iOS
-    const iOSPlatformChannelSpecifics = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      sound: 'ringtone.aiff',
-    );
-    
-    // تعريف إعدادات الإشعارات
-    const platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-      iOS: iOSPlatformChannelSpecifics,
-    );
-    
-    // عرض الإشعار
-    await _flutterLocalNotificationsPlugin.show(
-      call.id.hashCode,
-      'مكالمة واردة',
-      'مكالمة واردة من ${call.callerName}',
-      platformChannelSpecifics,
-      payload: 'call:${call.id}',
-    );
-  }
-
   // عرض نافذة المكالمة الواردة
   void showIncomingCallDialog(BuildContext context, Call call) {
     showDialog(
@@ -200,11 +148,11 @@ class CallNotificationService {
         call: call,
         onCallAccepted: () {
           // إلغاء الإشعار
-          _flutterLocalNotificationsPlugin.cancel(call.id.hashCode);
+          _notifications.cancel(call.id.hashCode);
         },
         onCallRejected: () {
           // إلغاء الإشعار
-          _flutterLocalNotificationsPlugin.cancel(call.id.hashCode);
+          _notifications.cancel(call.id.hashCode);
         },
       ),
     );
@@ -212,7 +160,7 @@ class CallNotificationService {
 
   // إلغاء إشعار المكالمة
   Future<void> cancelCallNotification(String callId) async {
-    await _flutterLocalNotificationsPlugin.cancel(callId.hashCode);
+    await _notifications.cancel(callId.hashCode);
   }
 
   // التخلص من الموارد
