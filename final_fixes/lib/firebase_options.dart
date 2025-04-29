@@ -31,41 +31,40 @@ class DefaultFirebaseOptions {
     }
   }
 
-  // قم باستبدال القيم التالية بالقيم الخاصة بمشروعك من Firebase Console
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'YOUR-WEB-API-KEY',
-    appId: 'YOUR-WEB-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'YOUR-PROJECT-ID',
-    authDomain: 'YOUR-AUTH-DOMAIN',
-    storageBucket: 'YOUR-STORAGE-BUCKET',
+    apiKey: 'AIzaSyCCSydAGDIfKlk8pYQAHCN-bOVe55QWCr0',
+    appId: '1:631101559036:web:80e24ebd5341c2650e0779',
+    messagingSenderId: '631101559036',
+    projectId: 'app-ansar',
+    authDomain: 'app-ansar.firebaseapp.com',
+    storageBucket: 'app-ansar.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR-ANDROID-API-KEY',
-    appId: 'YOUR-ANDROID-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'YOUR-PROJECT-ID',
-    storageBucket: 'YOUR-STORAGE-BUCKET',
+    apiKey: 'AIzaSyCCSydAGDIfKlk8pYQAHCN-bOVe55QWCr0',
+    appId: '1:631101559036:android:80e24ebd5341c2650e0779',
+    messagingSenderId: '631101559036',
+    projectId: 'app-ansar',
+    storageBucket: 'app-ansar.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR-IOS-API-KEY',
-    appId: 'YOUR-IOS-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'YOUR-PROJECT-ID',
-    storageBucket: 'YOUR-STORAGE-BUCKET',
-    iosClientId: 'YOUR-IOS-CLIENT-ID',
-    iosBundleId: 'YOUR-IOS-BUNDLE-ID',
+    apiKey: 'AIzaSyCCSydAGDIfKlk8pYQAHCN-bOVe55QWCr0',
+    appId: '1:631101559036:ios:80e24ebd5341c2650e0779',
+    messagingSenderId: '631101559036',
+    projectId: 'app-ansar',
+    storageBucket: 'app-ansar.firebasestorage.app',
+    iosClientId: '631101559036-ios-client-id',
+    iosBundleId: 'com.ansar.ansarTeam',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'YOUR-MACOS-API-KEY',
-    appId: 'YOUR-MACOS-APP-ID',
-    messagingSenderId: 'YOUR-SENDER-ID',
-    projectId: 'YOUR-PROJECT-ID',
-    storageBucket: 'YOUR-STORAGE-BUCKET',
-    iosClientId: 'YOUR-MACOS-CLIENT-ID',
-    iosBundleId: 'YOUR-MACOS-BUNDLE-ID',
+    apiKey: 'AIzaSyCCSydAGDIfKlk8pYQAHCN-bOVe55QWCr0',
+    appId: '1:631101559036:macos:80e24ebd5341c2650e0779',
+    messagingSenderId: '631101559036',
+    projectId: 'app-ansar',
+    storageBucket: 'app-ansar.firebasestorage.app',
+    iosClientId: '631101559036-macos-client-id',
+    iosBundleId: 'com.ansar.ansarTeam',
   );
 } 
