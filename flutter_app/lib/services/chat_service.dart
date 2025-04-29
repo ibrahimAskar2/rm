@@ -222,7 +222,6 @@ class ChatService {
     required File audioFile,
   }) async {
     try {
-      // رفع الملف الصوتي إلى Firebase Storage
       final storageRef = _storage.ref().child('chats/$chatId/voice/${DateTime.now().millisecondsSinceEpoch}.m4a');
       await storageRef.putFile(audioFile);
       final downloadUrl = await storageRef.getDownloadURL();
@@ -240,7 +239,7 @@ class ChatService {
         readBy: [senderId],
         deliveredTo: [senderId],
         mediaData: {
-          'duration': 0, // TODO: إضافة مدة الملف الصوتي
+          'duration': 0,
           'size': await audioFile.length(),
         },
       );
@@ -273,6 +272,10 @@ class ChatService {
     required PlatformFile imageFile,
   }) async {
     try {
+      if (imageFile.bytes == null) {
+        throw Exception('Image file bytes are null');
+      }
+
       final ref = _storage.ref().child('chat_images/${DateTime.now().millisecondsSinceEpoch}');
       final uploadTask = await ref.putData(imageFile.bytes!);
       final imageUrl = await uploadTask.ref.getDownloadURL();

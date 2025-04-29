@@ -104,18 +104,20 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
           .map((doc) => Message.fromMap(doc.id, doc.data()))
           .toList();
       
-      setState(() {
-        _messages = messages;
-        _isLoading = false;
-        _hasMore = messages.length >= _messagesPerLoad;
-        _lastDocument = messages.isNotEmpty ? messagesSnapshot.docs.last : null;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      
       if (mounted) {
+        setState(() {
+          _messages = messages;
+          _isLoading = false;
+          _hasMore = messages.length >= _messagesPerLoad;
+          _lastDocument = messages.isNotEmpty ? messagesSnapshot.docs.last : null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('حدث خطأ أثناء تحميل الرسائل: $e')),
         );
@@ -144,18 +146,20 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
           .map((doc) => Message.fromMap(doc.id, doc.data()))
           .toList();
       
-      setState(() {
-        _messages.addAll(moreMessages);
-        _isLoading = false;
-        _hasMore = moreMessages.length >= _messagesPerLoad;
-        _lastDocument = moreMessages.isNotEmpty ? messagesSnapshot.docs.last : _lastDocument;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      
       if (mounted) {
+        setState(() {
+          _messages.addAll(moreMessages);
+          _isLoading = false;
+          _hasMore = moreMessages.length >= _messagesPerLoad;
+          _lastDocument = moreMessages.isNotEmpty ? messagesSnapshot.docs.last : _lastDocument;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('حدث خطأ أثناء تحميل المزيد من الرسائل: $e')),
         );
@@ -216,7 +220,9 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
         {'totalMessages': FieldValue.increment(1)},
       );
       
-      _loadMessages();
+      if (mounted) {
+        await _loadMessages();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -254,20 +260,20 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
         title: Text(widget.chatName),
         actions: [
           IconButton(
-            icon: const Icon(Icons.call),
-            onPressed: () => _startVoiceCall(),
+            icon: const Icon(Icons.search),
+            onPressed: _showSearchDialog,
           ),
           IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => _showSearchDialog(),
+            icon: const Icon(Icons.call),
+            onPressed: _startVoiceCall,
           ),
         ],
       ),
       body: Column(
         children: [
           Expanded(
-            child: _messages.isEmpty && !_isLoading
-                ? const Center(child: Text('لا توجد رسائل'))
+            child: _isLoading && _messages.isEmpty
+                ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
                     controller: _scrollController,
                     reverse: true,
@@ -281,42 +287,84 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
                           ),
                         );
                       }
-
-                      final message = _messages[index];
-                      final isMe = message.senderId == _firestoreService.currentUserId;
-
-                      return _buildMessageItem(message, isMe);
+                      return _buildMessageItem(_messages[index]);
                     },
                   ),
           ),
-          _buildInputArea(),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.attach_file),
+                  onPressed: _showAttachmentOptions,
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    decoration: const InputDecoration(
+                      hintText: 'اكتب رسالة...',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: null,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: _sendMessage,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildMessageItem(Message message, bool isMe) {
+  Widget _buildMessageItem(Message message) {
+    final isMe = message.senderId == _firestoreService.currentUserId;
+    
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isMe ? Colors.blue[100] : Colors.grey[200],
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
-          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (message.type == 'image')
+            if (message.type == MessageType.text)
+              Text(
+                message.content,
+                style: const TextStyle(fontSize: 16),
+              )
+            else if (message.type == MessageType.image)
               Image.network(
-                message.mediaUrlString,
+                message.mediaUrl!,
                 width: 200,
                 height: 200,
                 fit: BoxFit.cover,
-              )
-            else
-              Text(message.content),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const SizedBox(
+                    width: 200,
+                    height: 200,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return const SizedBox(
+                    width: 200,
+                    height: 200,
+                    child: Center(
+                      child: Icon(Icons.error, color: Colors.red),
+                    ),
+                  );
+                },
+              ),
             const SizedBox(height: 4),
             Text(
               _formatTimestamp(message.timestamp),
@@ -331,41 +379,19 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     );
   }
 
-  Widget _buildInputArea() {
-    return Container(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.attach_file),
-            onPressed: () => _showAttachmentOptions(),
-          ),
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: 'اكتب رسالة...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.send),
-            onPressed: _sendMessage,
-          ),
-        ],
-      ),
-    );
-  }
-
   String _formatTimestamp(DateTime timestamp) {
-    return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inDays > 0) {
+      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} ساعة';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} دقيقة';
+    } else {
+      return 'الآن';
+    }
   }
 
   void _startVoiceCall() async {
