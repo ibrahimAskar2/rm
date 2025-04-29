@@ -18,12 +18,25 @@ class ChatService {
   final CollectionReference _messagesCollection = FirebaseFirestore.instance.collection('messages');
   final CollectionReference _chatsCollection = FirebaseFirestore.instance.collection('chats');
 
+  // User context
+  String? _currentUserId;
+  String? _currentUserName;
+
+  void setCurrentUser(String userId, String userName) {
+    _currentUserId = userId;
+    _currentUserName = userName;
+  }
+
   // الحصول على قائمة الدردشات للمستخدم
   Stream<QuerySnapshot> getChats() {
+    if (_currentUserId == null) {
+      throw Exception('User not set');
+    }
+
     try {
-      // الحصول على الدردشات التي يشارك فيها المستخدم الحالي
       return _firestore
           .collection('chats')
+          .where('participants', arrayContains: _currentUserId)
           .orderBy('lastMessageTimestamp', descending: true)
           .snapshots();
     } catch (e) {
@@ -48,12 +61,16 @@ class ChatService {
 
   // إنشاء دردشة خاصة
   Future<String> createPrivateChat(String otherUserId) async {
+    if (_currentUserId == null) {
+      throw Exception('User not set');
+    }
+
     try {
       // التحقق من وجود دردشة سابقة بين المستخدمين
       final querySnapshot = await _firestore
           .collection('chats')
           .where('type', isEqualTo: 'private')
-          .where('participants', arrayContains: otherUserId)
+          .where('participants', arrayContains: _currentUserId)
           .get();
       
       // إذا وجدت دردشة سابقة، أعد معرفها
@@ -65,7 +82,7 @@ class ChatService {
       final chatRef = _firestore.collection('chats').doc();
       await chatRef.set({
         'type': 'private',
-        'participants': [otherUserId],
+        'participants': [_currentUserId, otherUserId],
         'createdAt': Timestamp.now(),
         'lastMessage': '',
         'lastMessageTimestamp': Timestamp.now(),
@@ -80,14 +97,18 @@ class ChatService {
 
   // إنشاء دردشة جماعية
   Future<String> createGroupChat(String name, List<String> participants) async {
+    if (_currentUserId == null) {
+      throw Exception('User not set');
+    }
+
     try {
       // إنشاء دردشة جديدة
       final chatRef = _firestore.collection('chats').doc();
       await chatRef.set({
         'type': 'group',
         'name': name,
-        'participants': participants,
-        'admin': participants.first, // المستخدم الأول هو المسؤول
+        'participants': [...participants, _currentUserId],
+        'admin': _currentUserId,
         'createdAt': Timestamp.now(),
         'lastMessage': '',
         'lastMessageTimestamp': Timestamp.now(),
@@ -114,6 +135,10 @@ class ChatService {
 
   // تعليم الرسالة كمستلمة
   Future<void> markMessageAsDelivered(String chatId, String messageId) async {
+    if (_currentUserId == null) {
+      throw Exception('User not set');
+    }
+
     try {
       await _firestore
           .collection('chats')
@@ -121,7 +146,7 @@ class ChatService {
           .collection('messages')
           .doc(messageId)
           .update({
-            'deliveredTo': FieldValue.arrayUnion([/* currentUserId */]),
+            'deliveredTo': FieldValue.arrayUnion([_currentUserId]),
           });
     } catch (e) {
       print('Error marking message as delivered: $e');
@@ -131,6 +156,10 @@ class ChatService {
 
   // تعليم الرسالة كمقروءة
   Future<void> markMessageAsRead(String chatId, String messageId) async {
+    if (_currentUserId == null) {
+      throw Exception('User not set');
+    }
+
     try {
       await _firestore
           .collection('chats')
@@ -138,7 +167,7 @@ class ChatService {
           .collection('messages')
           .doc(messageId)
           .update({
-            'readBy': FieldValue.arrayUnion([/* currentUserId */]),
+            'readBy': FieldValue.arrayUnion([_currentUserId]),
           });
     } catch (e) {
       print('Error marking message as read: $e');
@@ -148,6 +177,10 @@ class ChatService {
 
   // إرسال رسالة نصية
   Future<void> sendTextMessage(String chatId, String text) async {
+    if (_currentUserId == null || _currentUserName == null) {
+      throw Exception('User not set');
+    }
+
     try {
       final messageRef = _firestore
           .collection('chats')
@@ -158,10 +191,11 @@ class ChatService {
       await messageRef.set({
         'type': 'text',
         'text': text,
-        'senderId': /* currentUserId */,
+        'senderId': _currentUserId,
+        'senderName': _currentUserName,
         'timestamp': Timestamp.now(),
-        'readBy': [],
-        'deliveredTo': [],
+        'readBy': [_currentUserId],
+        'deliveredTo': [_currentUserId],
       });
       
       // تحديث آخر رسالة في الدردشة
@@ -177,6 +211,10 @@ class ChatService {
 
   // إرسال رسالة صوتية
   Future<void> sendVoiceMessage(String chatId, File audioFile) async {
+    if (_currentUserId == null || _currentUserName == null) {
+      throw Exception('User not set');
+    }
+
     try {
       // رفع الملف الصوتي إلى Firebase Storage
       final storageRef = _storage.ref().child('chats/$chatId/voice/${DateTime.now().millisecondsSinceEpoch}.m4a');
@@ -193,10 +231,11 @@ class ChatService {
       await messageRef.set({
         'type': 'voice',
         'url': downloadUrl,
-        'senderId': /* currentUserId */,
+        'senderId': _currentUserId,
+        'senderName': _currentUserName,
         'timestamp': Timestamp.now(),
-        'readBy': [],
-        'deliveredTo': [],
+        'readBy': [_currentUserId],
+        'deliveredTo': [_currentUserId],
       });
       
       // تحديث آخر رسالة في الدردشة
@@ -212,6 +251,10 @@ class ChatService {
 
   // إرسال صورة
   Future<void> sendImageMessage(String chatId, File imageFile) async {
+    if (_currentUserId == null || _currentUserName == null) {
+      throw Exception('User not set');
+    }
+
     try {
       // رفع الصورة إلى Firebase Storage
       final storageRef = _storage.ref().child('chats/$chatId/images/${DateTime.now().millisecondsSinceEpoch}.jpg');
@@ -228,10 +271,11 @@ class ChatService {
       await messageRef.set({
         'type': 'image',
         'url': downloadUrl,
-        'senderId': /* currentUserId */,
+        'senderId': _currentUserId,
+        'senderName': _currentUserName,
         'timestamp': Timestamp.now(),
-        'readBy': [],
-        'deliveredTo': [],
+        'readBy': [_currentUserId],
+        'deliveredTo': [_currentUserId],
       });
       
       // تحديث آخر رسالة في الدردشة
@@ -245,319 +289,131 @@ class ChatService {
     }
   }
 
-  // الحصول على رسائل الدردشة مع التحميل المتدرج
-  Future<List<Message>> getChatMessages({
-    required String chatId,
-    DocumentSnapshot? lastDocument,
-    int limit = 20,
-  }) async {
-    try {
-      Query query = _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .orderBy('timestamp', descending: true)
-          .limit(limit);
-      
-      // إضافة التحميل المتدرج
-      if (lastDocument != null) {
-        query = query.startAfterDocument(lastDocument);
-      }
-      
-      final querySnapshot = await query.get();
-      
-      // تحويل البيانات إلى قائمة من كائنات Message
-      final messages = querySnapshot.docs.map((doc) {
-        return Message.fromMap(doc.id, doc.data() as Map<String, dynamic>);
-      }).toList();
-      
-      return messages;
-    } catch (e) {
-      print('Error getting chat messages: $e');
-      rethrow;
-    }
-  }
-
-  // البحث في رسائل الدردشة
-  Future<List<Message>> searchChatMessages({
-    required String chatId,
-    required String searchText,
-    int limit = 20,
-  }) async {
-    try {
-      // استخدام Firebase للبحث في الرسائل
-      // ملاحظة: Firestore لا يدعم البحث النصي الكامل، لذلك نستخدم استعلاماً بسيطاً
-      
-      final querySnapshot = await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .orderBy('timestamp', descending: true)
-          .get();
-      
-      // تصفية النتائج على جانب العميل
-      final messages = querySnapshot.docs
-          .map((doc) => Message.fromMap(doc.id, doc.data() as Map<String, dynamic>))
-          .where((message) => message.text.toLowerCase().contains(searchText.toLowerCase()))
-          .take(limit)
-          .toList();
-      
-      return messages;
-    } catch (e) {
-      print('Error searching chat messages: $e');
-      rethrow;
-    }
-  }
-
-  // إنشاء دردشة جديدة
-  Future<String> createChat({
-    required List<User> participants,
-    required String chatName,
-    bool isGroup = false,
-  }) async {
-    try {
-      // إنشاء وثيقة الدردشة
-      final chatRef = _firestore.collection('chats').doc();
-      
-      // إعداد بيانات الدردشة
-      final chatData = {
-        'name': chatName,
-        'isGroup': isGroup,
-        'createdAt': Timestamp.now(),
-        'participantIds': participants.map((user) => user.id).toList(),
-        'participantCount': participants.length,
-      };
-      
-      // حفظ بيانات الدردشة
-      await chatRef.set(chatData);
-      
-      // إضافة المشاركين في الدردشة
-      final batch = _firestore.batch();
-      
-      for (var user in participants) {
-        final participantRef = _firestore.collection('chat_participants').doc();
-        batch.set(participantRef, {
-          'chatId': chatRef.id,
-          'userId': user.id,
-          'joinedAt': Timestamp.now(),
-        });
-      }
-      
-      await batch.commit();
-      
-      return chatRef.id;
-    } catch (e) {
-      print('Error creating chat: $e');
-      rethrow;
-    }
-  }
-
-  // إضافة مستخدم إلى دردشة جماعية
-  Future<void> addUserToGroupChat({
-    required String chatId,
-    required User user,
-  }) async {
-    try {
-      // التحقق من أن الدردشة هي دردشة جماعية
-      final chatDoc = await _firestore.collection('chats').doc(chatId).get();
-      
-      if (!chatDoc.exists) {
-        throw Exception('الدردشة غير موجودة');
-      }
-      
-      final chatData = chatDoc.data();
-      if (chatData == null || chatData['isGroup'] != true) {
-        throw Exception('الدردشة ليست دردشة جماعية');
-      }
-      
-      // التحقق من أن المستخدم ليس مشاركاً بالفعل
-      final participantQuery = await _firestore
-          .collection('chat_participants')
-          .where('chatId', isEqualTo: chatId)
-          .where('userId', isEqualTo: user.id)
-          .get();
-      
-      if (participantQuery.docs.isNotEmpty) {
-        throw Exception('المستخدم مشارك بالفعل في الدردشة');
-      }
-      
-      // إضافة المستخدم إلى الدردشة
-      final participantRef = _firestore.collection('chat_participants').doc();
-      await participantRef.set({
-        'chatId': chatId,
-        'userId': user.id,
-        'joinedAt': Timestamp.now(),
-      });
-      
-      // تحديث عدد المشاركين في الدردشة
-      await _firestore.collection('chats').doc(chatId).update({
-        'participantIds': FieldValue.arrayUnion([user.id]),
-        'participantCount': FieldValue.increment(1),
-      });
-    } catch (e) {
-      print('Error adding user to group chat: $e');
-      rethrow;
-    }
-  }
-
-  // إزالة مستخدم من دردشة جماعية
-  Future<void> removeUserFromGroupChat({
-    required String chatId,
-    required String userId,
-  }) async {
-    try {
-      // التحقق من أن الدردشة هي دردشة جماعية
-      final chatDoc = await _firestore.collection('chats').doc(chatId).get();
-      
-      if (!chatDoc.exists) {
-        throw Exception('الدردشة غير موجودة');
-      }
-      
-      final chatData = chatDoc.data();
-      if (chatData == null || chatData['isGroup'] != true) {
-        throw Exception('الدردشة ليست دردشة جماعية');
-      }
-      
-      // البحث عن مشاركة المستخدم في الدردشة
-      final participantQuery = await _firestore
-          .collection('chat_participants')
-          .where('chatId', isEqualTo: chatId)
-          .where('userId', isEqualTo: userId)
-          .get();
-      
-      if (participantQuery.docs.isEmpty) {
-        throw Exception('المستخدم ليس مشاركاً في الدردشة');
-      }
-      
-      // حذف مشاركة المستخدم
-      final batch = _firestore.batch();
-      
-      for (var doc in participantQuery.docs) {
-        batch.delete(doc.reference);
-      }
-      
-      await batch.commit();
-      
-      // تحديث عدد المشاركين في الدردشة
-      await _firestore.collection('chats').doc(chatId).update({
-        'participantIds': FieldValue.arrayRemove([userId]),
-        'participantCount': FieldValue.increment(-1),
-      });
-    } catch (e) {
-      print('Error removing user from group chat: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> sendMessage({
-    required String chatId,
-    required String senderId,
-    required String senderName,
-    required String text,
-    String? imageUrl,
-    String? fileUrl,
-    String? fileType,
-    String? fileName,
-  }) async {
-    final message = {
-      'chatId': chatId,
-      'senderId': senderId,
-      'senderName': senderName,
-      'text': text,
-      'imageUrl': imageUrl,
-      'fileUrl': fileUrl,
-      'fileType': fileType,
-      'fileName': fileName,
-      'timestamp': FieldValue.serverTimestamp(),
-      'isRead': false,
-    };
-
-    await _messagesCollection.add(message);
-    await _updateChatLastMessage(chatId, text);
-  }
-
-  Future<void> _updateChatLastMessage(String chatId, String text) async {
-    await _chatsCollection.doc(chatId).update({
-      'lastMessage': text,
-      'lastMessageTime': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> markMessageAsRead(String messageId) async {
-    await _messagesCollection.doc(messageId).update({
-      'isRead': true,
-    });
-  }
-
+  // الحصول على رسائل الدردشة
   Stream<List<Message>> getMessagesStream(String chatId) {
-    return _messagesCollection
-        .where('chatId', isEqualTo: chatId)
+    return _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return Message.fromMap(data);
+        final data = doc.data();
+        return Message.fromMap({
+          'id': doc.id,
+          ...data,
+        });
       }).toList();
     });
   }
 
+  // البحث في رسائل الدردشة
   Future<List<Message>> searchMessages(String chatId, String searchText) async {
-    final snapshot = await _messagesCollection
-        .where('chatId', isEqualTo: chatId)
-        .where('text', isGreaterThanOrEqualTo: searchText)
-        .where('text', isLessThanOrEqualTo: searchText + '\uf8ff')
-        .get();
+    try {
+      final querySnapshot = await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .where('text', isGreaterThanOrEqualTo: searchText)
+          .where('text', isLessThanOrEqualTo: searchText + '\uf8ff')
+          .get();
 
-    return snapshot.docs.map((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      return Message.fromMap(data);
-    }).toList();
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        return Message.fromMap({
+          'id': doc.id,
+          ...data,
+        });
+      }).toList();
+    } catch (e) {
+      print('Error searching messages: $e');
+      rethrow;
+    }
   }
 
-  Future<void> deleteMessage(String messageId) async {
-    await _messagesCollection.doc(messageId).delete();
+  // حذف رسالة
+  Future<void> deleteMessage(String chatId, String messageId) async {
+    try {
+      await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .delete();
+    } catch (e) {
+      print('Error deleting message: $e');
+      rethrow;
+    }
   }
 
-  Future<void> updateMessage(String messageId, String newText) async {
-    await _messagesCollection.doc(messageId).update({
-      'text': newText,
-      'isEdited': true,
-      'editedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<String> uploadImage(File imageFile) async {
-    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
-    final ref = _storage.ref().child('chat_images/$fileName');
-    
-    final uploadTask = ref.putFile(imageFile);
-    final snapshot = await uploadTask;
-    
-    return await snapshot.ref.getDownloadURL();
-  }
-
+  // تعديل رسالة
   Future<void> editMessage(String chatId, String messageId, String newText) async {
-    await _messagesCollection.doc(messageId).update({
-      'text': newText,
-      'isEdited': true,
-      'editedAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .update({
+        'text': newText,
+        'isEdited': true,
+        'editedAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Error editing message: $e');
+      rethrow;
+    }
   }
 
+  // الرد على رسالة
   Future<void> replyToMessage(String chatId, String messageId, String replyText) async {
-    final messageRef = _messagesCollection.doc(messageId);
-    
-    final messageDoc = await messageRef.get();
-    final messageData = messageDoc.data();
-    
-    if (messageData != null) {
-      await sendMessage(
-        chatId: chatId,
-        senderId: /* currentUserId */,
-        senderName: /* currentUserName */,
-        text: replyText,
-      );
+    if (_currentUserId == null || _currentUserName == null) {
+      throw Exception('User not set');
+    }
+
+    try {
+      final messageRef = _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc();
+      
+      await messageRef.set({
+        'type': 'text',
+        'text': replyText,
+        'senderId': _currentUserId,
+        'senderName': _currentUserName,
+        'timestamp': Timestamp.now(),
+        'readBy': [_currentUserId],
+        'deliveredTo': [_currentUserId],
+        'replyTo': messageId,
+      });
+      
+      // تحديث آخر رسالة في الدردشة
+      await _firestore.collection('chats').doc(chatId).update({
+        'lastMessage': replyText,
+        'lastMessageTimestamp': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Error replying to message: $e');
+      rethrow;
+    }
+  }
+
+  // رفع صورة
+  Future<String> uploadImage(File imageFile) async {
+    try {
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
+      final ref = _storage.ref().child('chat_images/$fileName');
+      
+      final uploadTask = ref.putFile(imageFile);
+      final snapshot = await uploadTask;
+      
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      print('Error uploading image: $e');
+      rethrow;
     }
   }
 }

@@ -16,6 +16,8 @@ class Message {
   final DateTime? editedAt;
   final List<String> readBy;
   final List<String> deliveredTo;
+  final String? replyTo;
+  final Message? replyMessage;
 
   Message({
     required this.id,
@@ -33,6 +35,8 @@ class Message {
     this.editedAt,
     this.readBy = const [],
     this.deliveredTo = const [],
+    this.replyTo,
+    this.replyMessage,
   });
 
   // تحويل الرسالة إلى Map لتخزينها في Firestore
@@ -53,6 +57,7 @@ class Message {
       'editedAt': editedAt != null ? Timestamp.fromDate(editedAt!) : null,
       'readBy': readBy,
       'deliveredTo': deliveredTo,
+      'replyTo': replyTo,
     };
   }
 
@@ -74,6 +79,7 @@ class Message {
       editedAt: map['editedAt'] != null ? (map['editedAt'] as Timestamp).toDate() : null,
       readBy: List<String>.from(map['readBy'] ?? []),
       deliveredTo: List<String>.from(map['deliveredTo'] ?? []),
+      replyTo: map['replyTo'],
     );
   }
 
@@ -81,20 +87,21 @@ class Message {
   factory Message.createText({
     required String chatId,
     required String senderId,
+    required String senderName,
     required String text,
   }) {
     return Message(
       id: FirebaseFirestore.instance.collection('chats').doc(chatId).collection('messages').doc().id,
       type: 'text',
       senderId: senderId,
-      senderName: '',
+      senderName: senderName,
       text: text,
       timestamp: DateTime.now(),
       isRead: false,
       isEdited: false,
       editedAt: null,
       readBy: [senderId],
-      deliveredTo: [],
+      deliveredTo: [senderId],
     );
   }
 
@@ -102,6 +109,7 @@ class Message {
   factory Message.createMedia({
     required String chatId,
     required String senderId,
+    required String senderName,
     required String text,
     required String mediaType,
     required Map<String, dynamic> mediaData,
@@ -110,7 +118,7 @@ class Message {
       id: FirebaseFirestore.instance.collection('chats').doc(chatId).collection('messages').doc().id,
       type: mediaType,
       senderId: senderId,
-      senderName: '',
+      senderName: senderName,
       text: text,
       imageUrl: mediaData['imageUrl'],
       fileUrl: mediaData['fileUrl'],
@@ -121,7 +129,7 @@ class Message {
       isEdited: false,
       editedAt: null,
       readBy: [senderId],
-      deliveredTo: [],
+      deliveredTo: [senderId],
     );
   }
 
@@ -150,6 +158,61 @@ class Message {
       editedAt: editedAt,
       readBy: updatedReadBy,
       deliveredTo: deliveredTo,
+      replyTo: replyTo,
+      replyMessage: replyMessage,
+    );
+  }
+
+  // تعليم الرسالة كمستلمة من قبل مستخدم
+  Message markAsDeliveredTo(String userId) {
+    if (deliveredTo.contains(userId)) {
+      return this;
+    }
+    
+    final updatedDeliveredTo = List<String>.from(deliveredTo);
+    updatedDeliveredTo.add(userId);
+    
+    return Message(
+      id: id,
+      type: type,
+      senderId: senderId,
+      senderName: senderName,
+      text: text,
+      imageUrl: imageUrl,
+      fileUrl: fileUrl,
+      fileType: fileType,
+      fileName: fileName,
+      timestamp: timestamp,
+      isRead: isRead,
+      isEdited: isEdited,
+      editedAt: editedAt,
+      readBy: readBy,
+      deliveredTo: updatedDeliveredTo,
+      replyTo: replyTo,
+      replyMessage: replyMessage,
+    );
+  }
+
+  // تعديل الرسالة
+  Message edit(String newText) {
+    return Message(
+      id: id,
+      type: type,
+      senderId: senderId,
+      senderName: senderName,
+      text: newText,
+      imageUrl: imageUrl,
+      fileUrl: fileUrl,
+      fileType: fileType,
+      fileName: fileName,
+      timestamp: timestamp,
+      isRead: isRead,
+      isEdited: true,
+      editedAt: DateTime.now(),
+      readBy: readBy,
+      deliveredTo: deliveredTo,
+      replyTo: replyTo,
+      replyMessage: replyMessage,
     );
   }
 
@@ -184,6 +247,8 @@ class Message {
     DateTime? editedAt,
     List<String>? readBy,
     List<String>? deliveredTo,
+    String? replyTo,
+    Message? replyMessage,
   }) {
     return Message(
       id: id ?? this.id,
@@ -201,6 +266,8 @@ class Message {
       editedAt: editedAt ?? this.editedAt,
       readBy: readBy ?? this.readBy,
       deliveredTo: deliveredTo ?? this.deliveredTo,
+      replyTo: replyTo ?? this.replyTo,
+      replyMessage: replyMessage ?? this.replyMessage,
     );
   }
 }

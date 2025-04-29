@@ -4,93 +4,98 @@ class User {
   final String id;
   final String name;
   final String email;
-  final String department;
-  final String position;
-  final String imageUrl;
+  final String? phone;
+  final String? profileImage;
+  final String? bio;
+  final String? status;
   final bool isOnline;
-  final DateTime lastActive;
-  final Map<String, dynamic> settings;
+  final DateTime lastSeen;
+  final Map<String, dynamic>? settings;
+  final List<String>? blockedUsers;
+  final List<String>? favoriteChats;
+  final Map<String, dynamic>? notifications;
 
   User({
     required this.id,
     required this.name,
     required this.email,
-    required this.department,
-    this.position = '',
-    this.imageUrl = '',
+    this.phone,
+    this.profileImage,
+    this.bio,
+    this.status,
     this.isOnline = false,
-    DateTime? lastActive,
-    this.settings = const {},
-  }) : lastActive = lastActive ?? DateTime.now();
+    required this.lastSeen,
+    this.settings,
+    this.blockedUsers,
+    this.favoriteChats,
+    this.notifications,
+  });
 
-  // تحويل المستخدم إلى Map لتخزينه في Firestore
+  factory User.fromMap(Map<String, dynamic> map) {
+    return User(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      email: map['email'] ?? '',
+      phone: map['phone'],
+      profileImage: map['profileImage'],
+      bio: map['bio'],
+      status: map['status'],
+      isOnline: map['isOnline'] ?? false,
+      lastSeen: (map['lastSeen'] as Timestamp).toDate(),
+      settings: map['settings'],
+      blockedUsers: List<String>.from(map['blockedUsers'] ?? []),
+      favoriteChats: List<String>.from(map['favoriteChats'] ?? []),
+      notifications: map['notifications'],
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'name': name,
       'email': email,
-      'department': department,
-      'position': position,
-      'imageUrl': imageUrl,
+      'phone': phone,
+      'profileImage': profileImage,
+      'bio': bio,
+      'status': status,
       'isOnline': isOnline,
-      'lastActive': Timestamp.fromDate(lastActive),
+      'lastSeen': Timestamp.fromDate(lastSeen),
       'settings': settings,
+      'blockedUsers': blockedUsers,
+      'favoriteChats': favoriteChats,
+      'notifications': notifications,
     };
   }
 
-  // إنشاء مستخدم من Map من Firestore
-  factory User.fromMap(String id, Map<String, dynamic> map) {
-    return User(
-      id: id,
-      name: map['name'] ?? '',
-      email: map['email'] ?? '',
-      department: map['department'] ?? '',
-      position: map['position'] ?? '',
-      imageUrl: map['imageUrl'] ?? '',
-      isOnline: map['isOnline'] ?? false,
-      lastActive: (map['lastActive'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      settings: map['settings'] ?? {},
-    );
-  }
-
-  // إنشاء نسخة معدلة من المستخدم
   User copyWith({
+    String? id,
     String? name,
     String? email,
-    String? department,
-    String? position,
-    String? imageUrl,
+    String? phone,
+    String? profileImage,
+    String? bio,
+    String? status,
     bool? isOnline,
-    DateTime? lastActive,
+    DateTime? lastSeen,
     Map<String, dynamic>? settings,
+    List<String>? blockedUsers,
+    List<String>? favoriteChats,
+    Map<String, dynamic>? notifications,
   }) {
     return User(
-      id: id,
+      id: id ?? this.id,
       name: name ?? this.name,
       email: email ?? this.email,
-      department: department ?? this.department,
-      position: position ?? this.position,
-      imageUrl: imageUrl ?? this.imageUrl,
+      phone: phone ?? this.phone,
+      profileImage: profileImage ?? this.profileImage,
+      bio: bio ?? this.bio,
+      status: status ?? this.status,
       isOnline: isOnline ?? this.isOnline,
-      lastActive: lastActive ?? this.lastActive,
+      lastSeen: lastSeen ?? this.lastSeen,
       settings: settings ?? this.settings,
-    );
-  }
-
-  // تحديث حالة الاتصال
-  User updateOnlineStatus(bool isOnline) {
-    return copyWith(
-      isOnline: isOnline,
-      lastActive: isOnline ? null : DateTime.now(),
-    );
-  }
-
-  // تحديث إعدادات المستخدم
-  User updateSettings(Map<String, dynamic> newSettings) {
-    return copyWith(
-      settings: {
-        ...settings,
-        ...newSettings,
-      },
+      blockedUsers: blockedUsers ?? this.blockedUsers,
+      favoriteChats: favoriteChats ?? this.favoriteChats,
+      notifications: notifications ?? this.notifications,
     );
   }
 
@@ -109,7 +114,7 @@ class User {
   // التحقق مما إذا كان المستخدم نشطًا مؤخرًا
   bool get isRecentlyActive {
     final now = DateTime.now();
-    final difference = now.difference(lastActive);
+    final difference = now.difference(lastSeen);
     return difference.inMinutes < 5;
   }
 

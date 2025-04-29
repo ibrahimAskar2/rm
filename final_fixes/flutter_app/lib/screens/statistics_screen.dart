@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/statistics_provider.dart';
-import '../widgets/period_selector.dart';
+import 'package:fl_chart/fl_chart.dart';
+import '../models/statistics_model.dart';
+import '../services/statistics_service.dart';
+import '../providers/user_provider.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -10,448 +12,140 @@ class StatisticsScreen extends StatefulWidget {
   State<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  String _currentPeriod = 'day';
+class _StatisticsScreenState extends State<StatisticsScreen> {
+  final StatisticsService _statisticsService = StatisticsService();
+  bool _isLoading = true;
+  Statistics? _statistics;
+  String _selectedPeriod = 'week';
+  String _selectedChart = 'messages';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    
-    // تحميل بيانات الإحصائيات عند تحميل الشاشة
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final statisticsProvider = Provider.of<StatisticsProvider>(context, listen: false);
-      statisticsProvider.loadAllEmployeesStats(_currentPeriod);
-      statisticsProvider.loadAttendanceReport(_currentPeriod);
-    });
+    _loadStatistics();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _loadStatistics() async {
+    setState(() => _isLoading = true);
+    try {
+      final userId = context.read<UserProvider>().user?.uid;
+      if (userId != null) {
+        final stats = await _statisticsService.getUserStatistics(userId);
+        setState(() {
+          _statistics = stats;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في تحميل الإحصائيات: $e')),
+        );
+      }
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_statistics == null) {
+      return const Center(child: Text('لا توجد إحصائيات متاحة'));
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('الإحصائيات'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'ملخص'),
-            Tab(text: 'تقارير الحضور'),
-            Tab(text: 'إحصائيات الموظفين'),
-          ],
-        ),
-      ),
-      body: Column(
-        children: [
-          // اختيار الفترة الزمنية
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: PeriodSelector(
-              currentPeriod: _currentPeriod,
-              onPeriodChanged: (period) {
-                setState(() {
-                  _currentPeriod = period;
-                });
-                
-                final statisticsProvider = Provider.of<StatisticsProvider>(context, listen: false);
-                statisticsProvider.loadAllEmployeesStats(period);
-                statisticsProvider.loadAttendanceReport(period);
-              },
-            ),
-          ),
-          
-          // محتوى التبويبات
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildSummaryTab(),
-                _buildAttendanceReportTab(),
-                _buildEmployeeStatsTab(),
-              ],
-            ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadStatistics,
           ),
         ],
       ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSummaryCards(),
+            const SizedBox(height: 24),
+            _buildChartSelector(),
+            const SizedBox(height: 16),
+            _buildChart(),
+            const SizedBox(height: 24),
+            _buildDetailedStats(),
+          ],
+        ),
+      ),
     );
   }
 
-  // بناء تبويب الملخص
-  Widget _buildSummaryTab() {
-    return Consumer<StatisticsProvider>(
-      builder: (context, statisticsProvider, child) {
-        if (statisticsProvider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final stats = statisticsProvider.allEmployeesStats;
-        
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // بطاقات الإحصائيات
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      'إجمالي الموظفين',
-                      '${stats['totalEmployees'] ?? 0}',
-                      Icons.people,
-                      Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildStatCard(
-                      'الحضور',
-                      '${stats['presentCount'] ?? 0}',
-                      Icons.check_circle,
-                      Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 16),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      'التأخير',
-                      '${stats['lateCount'] ?? 0}',
-                      Icons.access_time,
-                      Colors.orange,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildStatCard(
-                      'متوسط الحضور',
-                      '${(stats['averageAttendance'] ?? 0).toStringAsFixed(1)}',
-                      Icons.analytics,
-                      Colors.purple,
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // رسم بياني للحضور (في التطبيق الفعلي)
-              const Text(
-                'رسم بياني للحضور',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              
-              const SizedBox(height: 8),
-              
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Text('سيتم عرض رسم بياني هنا'),
-                ),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // أفضل الموظفين حضوراً
-              const Text(
-                'أفضل الموظفين حضوراً',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              
-              const SizedBox(height: 8),
-              
-              _buildTopEmployeesList(stats),
-            ],
-          ),
-        );
-      },
+  Widget _buildSummaryCards() {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 16,
+      crossAxisSpacing: 16,
+      childAspectRatio: 1.5,
+      children: [
+        _buildSummaryCard(
+          'إجمالي الرسائل',
+          _statistics!.totalMessages.toString(),
+          Icons.message,
+          Colors.blue,
+        ),
+        _buildSummaryCard(
+          'الدردشات',
+          _statistics!.totalChats.toString(),
+          Icons.chat,
+          Colors.green,
+        ),
+        _buildSummaryCard(
+          'المجموعات',
+          _statistics!.totalGroups.toString(),
+          Icons.group,
+          Colors.orange,
+        ),
+        _buildSummaryCard(
+          'الوسائط',
+          _statistics!.totalMediaMessages.toString(),
+          Icons.photo,
+          Colors.purple,
+        ),
+      ],
     );
   }
 
-  // بناء تبويب تقارير الحضور
-  Widget _buildAttendanceReportTab() {
-    return Consumer<StatisticsProvider>(
-      builder: (context, statisticsProvider, child) {
-        if (statisticsProvider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final report = statisticsProvider.attendanceReport;
-        
-        if (report.isEmpty) {
-          return const Center(
-            child: Text('لا توجد بيانات للعرض'),
-          );
-        }
-        
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // جدول تقرير الحضور
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'تقرير الحضور والغياب',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // عناوين الجدول
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              'الموظف',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              'الحضور',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              'التأخير',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              'الغياب',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      const Divider(),
-                      
-                      // بيانات الجدول
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: report.length,
-                        itemBuilder: (context, index) {
-                          final employee = report[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  flex: 3,
-                                  child: Text(employee['name'] ?? 'موظف'),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    '${employee['presentDays'] ?? 0}',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.green,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    '${employee['lateDays'] ?? 0}',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.orange,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Text(
-                                    '${employee['absentDays'] ?? 0}',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.red,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // بناء تبويب إحصائيات الموظفين
-  Widget _buildEmployeeStatsTab() {
-    return Consumer<StatisticsProvider>(
-      builder: (context, statisticsProvider, child) {
-        if (statisticsProvider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final stats = statisticsProvider.allEmployeesStats;
-        final employeeAttendance = stats['employeeAttendance'] as Map<String, dynamic>? ?? {};
-        
-        if (employeeAttendance.isEmpty) {
-          return const Center(
-            child: Text('لا توجد بيانات للعرض'),
-          );
-        }
-        
-        // تحويل بيانات الحضور إلى قائمة وترتيبها تنازلياً
-        final List<MapEntry<String, dynamic>> sortedEntries = employeeAttendance.entries.toList()
-          ..sort((a, b) => (b.value as int).compareTo(a.value as int));
-        
-        return ListView.builder(
-          padding: const EdgeInsets.all(16.0),
-          itemCount: sortedEntries.length,
-          itemBuilder: (context, index) {
-            final entry = sortedEntries[index];
-            final userId = entry.key;
-            final attendanceCount = entry.value as int;
-            
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: InkWell(
-                onTap: () {
-                  // في التطبيق الفعلي، سيتم هنا فتح شاشة تفاصيل الموظف
-                  statisticsProvider.loadEmployeeAttendanceCount(userId, _currentPeriod);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: Colors.blue.shade100,
-                        child: const Text(
-                          'م',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'موظف',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'عدد أيام الحضور: $attendanceCount',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.arrow_forward_ios, size: 16),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // بناء بطاقة إحصائية
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 32,
-              color: color,
-            ),
+            Icon(icon, size: 32, color: color),
             const SizedBox(height: 8),
             Text(
               title,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
-                color: Colors.grey[600],
+                fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               value,
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
@@ -462,59 +156,187 @@ class _StatisticsScreenState extends State<StatisticsScreen> with SingleTickerPr
     );
   }
 
-  // بناء قائمة أفضل الموظفين حضوراً
-  Widget _buildTopEmployeesList(Map<String, dynamic> stats) {
-    final employeeAttendance = stats['employeeAttendance'] as Map<String, dynamic>? ?? {};
-    
-    if (employeeAttendance.isEmpty) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Center(
-            child: Text('لا توجد بيانات للعرض'),
+  Widget _buildChartSelector() {
+    return Row(
+      children: [
+        Expanded(
+          child: DropdownButtonFormField<String>(
+            value: _selectedPeriod,
+            decoration: const InputDecoration(
+              labelText: 'الفترة',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'week', child: Text('أسبوع')),
+              DropdownMenuItem(value: 'month', child: Text('شهر')),
+              DropdownMenuItem(value: 'year', child: Text('سنة')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedPeriod = value);
+              }
+            },
           ),
         ),
-      );
+        const SizedBox(width: 16),
+        Expanded(
+          child: DropdownButtonFormField<String>(
+            value: _selectedChart,
+            decoration: const InputDecoration(
+              labelText: 'نوع الرسم البياني',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'messages', child: Text('الرسائل')),
+              DropdownMenuItem(value: 'media', child: Text('الوسائط')),
+              DropdownMenuItem(value: 'users', child: Text('المستخدمين')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _selectedChart = value);
+              }
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChart() {
+    switch (_selectedChart) {
+      case 'messages':
+        return _buildMessagesChart();
+      case 'media':
+        return _buildMediaChart();
+      case 'users':
+        return _buildUsersChart();
+      default:
+        return const SizedBox.shrink();
     }
-    
-    // تحويل بيانات الحضور إلى قائمة وترتيبها تنازلياً
-    final List<MapEntry<String, dynamic>> sortedEntries = employeeAttendance.entries.toList()
-      ..sort((a, b) => (b.value as int).compareTo(a.value as int));
-    
-    // أخذ أفضل 5 موظفين
-    final topEntries = sortedEntries.take(5).toList();
-    
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+  }
+
+  Widget _buildMessagesChart() {
+    final data = _getChartData();
+    return SizedBox(
+      height: 300,
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(show: true),
+          titlesData: FlTitlesData(show: true),
+          borderData: FlBorderData(show: true),
+          lineBarsData: [
+            LineChartBarData(
+              spots: data,
+              isCurved: true,
+              color: Colors.blue,
+              barWidth: 3,
+              isStrokeCapRound: true,
+              dotData: FlDotData(show: true),
+              belowBarData: BarAreaData(show: true),
+            ),
+          ],
+        ),
       ),
-      child: ListView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: topEntries.length,
-        itemBuilder: (context, index) {
-          final entry = topEntries[index];
-          final attendanceCount = entry.value as int;
-          
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.blue.shade100,
-              child: Text(
-                '${index + 1}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
+    );
+  }
+
+  Widget _buildMediaChart() {
+    return SizedBox(
+      height: 300,
+      child: PieChart(
+        PieChartData(
+          sections: [
+            PieChartSectionData(
+              value: _statistics!.totalImageMessages.toDouble(),
+              title: 'صور',
+              color: Colors.blue,
+            ),
+            PieChartSectionData(
+              value: _statistics!.totalVoiceMessages.toDouble(),
+              title: 'صوت',
+              color: Colors.green,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUsersChart() {
+    final userData = _statistics!.messagesPerUser.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    
+    return SizedBox(
+      height: 300,
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: userData.first.value.toDouble(),
+          barGroups: userData.map((entry) {
+            return BarChartGroupData(
+              x: userData.indexOf(entry),
+              barRods: [
+                BarChartRodData(
+                  toY: entry.value.toDouble(),
                   color: Colors.blue,
                 ),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  List<FlSpot> _getChartData() {
+    final data = _statistics!.messagesPerDay.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    
+    return data.asMap().entries.map((entry) {
+      return FlSpot(entry.key.toDouble(), entry.value.toDouble());
+    }).toList();
+  }
+
+  Widget _buildDetailedStats() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'إحصائيات مفصلة',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
             ),
-            title: const Text('موظف'),
-            subtitle: Text('عدد أيام الحضور: $attendanceCount'),
-            trailing: index == 0
-                ? const Icon(Icons.emoji_events, color: Colors.amber)
-                : null,
-          );
-        },
+            const SizedBox(height: 16),
+            _buildStatRow('الرسائل النصية', _statistics!.totalMessages - _statistics!.totalMediaMessages),
+            _buildStatRow('الرسائل الصوتية', _statistics!.totalVoiceMessages),
+            _buildStatRow('الرسائل المصورة', _statistics!.totalImageMessages),
+            _buildStatRow('الدردشات الخاصة', _statistics!.totalPrivateChats),
+            _buildStatRow('المجموعات', _statistics!.totalGroups),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, int value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label),
+          Text(
+            value.toString(),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }

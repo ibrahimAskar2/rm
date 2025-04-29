@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../models/statistics_model.dart';
+import '../models/message_model.dart';
 
 class StatisticsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -417,6 +419,177 @@ class StatisticsService {
         'lateDays': 0,
         'totalDays': 0,
       };
+    }
+  }
+
+  // الحصول على إحصائيات المستخدم
+  Future<Statistics> getUserStatistics(String userId) async {
+    try {
+      final statsDoc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('statistics')
+          .doc('chat_statistics')
+          .get();
+
+      if (statsDoc.exists) {
+        return Statistics.fromMap(statsDoc.data()!);
+      }
+
+      // إذا لم تكن الإحصائيات موجودة، قم بإنشائها
+      return await _generateUserStatistics(userId);
+    } catch (e) {
+      print('Error getting user statistics: $e');
+      rethrow;
+    }
+  }
+
+  // إنشاء إحصائيات جديدة للمستخدم
+  Future<Statistics> _generateUserStatistics(String userId) async {
+    try {
+      // الحصول على جميع الدردشات التي يشارك فيها المستخدم
+      final chatsSnapshot = await _firestore
+          .collection('chats')
+          .where('participants', arrayContains: userId)
+          .get();
+
+      int totalMessages = 0;
+      int totalGroups = 0;
+      int totalPrivateChats = 0;
+      int totalMediaMessages = 0;
+      int totalVoiceMessages = 0;
+      int totalImageMessages = 0;
+      Map<String, int> messagesPerDay = {};
+      Map<String, int> messagesPerHour = {};
+      Map<String, int> messagesPerUser = {};
+      Map<String, int> messagesPerGroup = {};
+
+      // معالجة كل دردشة
+      for (var chatDoc in chatsSnapshot.docs) {
+        final chatData = chatDoc.data();
+        final isGroup = chatData['type'] == 'group';
+        
+        if (isGroup) {
+          totalGroups++;
+        } else {
+          totalPrivateChats++;
+        }
+
+        // الحصول على جميع الرسائل في الدردشة
+        final messagesSnapshot = await chatDoc.reference
+            .collection('messages')
+            .orderBy('timestamp', descending: true)
+            .get();
+
+        for (var messageDoc in messagesSnapshot.docs) {
+          final messageData = messageDoc.data();
+          totalMessages++;
+
+          // تحديث إحصائيات الوسائط
+          if (messageData['type'] != 'text') {
+            totalMediaMessages++;
+            if (messageData['type'] == 'voice') {
+              totalVoiceMessages++;
+            } else if (messageData['type'] == 'image') {
+              totalImageMessages++;
+            }
+          }
+
+          // تحديث إحصائيات الوقت
+          final timestamp = (messageData['timestamp'] as Timestamp).toDate();
+          final dayKey = '${timestamp.year}-${timestamp.month}-${timestamp.day}';
+          final hourKey = '${timestamp.hour}:00';
+
+          messagesPerDay[dayKey] = (messagesPerDay[dayKey] ?? 0) + 1;
+          messagesPerHour[hourKey] = (messagesPerHour[hourKey] ?? 0) + 1;
+
+          // تحديث إحصائيات المستخدمين
+          final senderId = messageData['senderId'];
+          messagesPerUser[senderId] = (messagesPerUser[senderId] ?? 0) + 1;
+
+          // تحديث إحصائيات المجموعات
+          if (isGroup) {
+            messagesPerGroup[chatDoc.id] = (messagesPerGroup[chatDoc.id] ?? 0) + 1;
+          }
+        }
+      }
+
+      // إنشاء كائن الإحصائيات
+      final statistics = Statistics(
+        totalMessages: totalMessages,
+        totalChats: totalGroups + totalPrivateChats,
+        totalGroups: totalGroups,
+        totalPrivateChats: totalPrivateChats,
+        totalMediaMessages: totalMediaMessages,
+        totalVoiceMessages: totalVoiceMessages,
+        totalImageMessages: totalImageMessages,
+        messagesPerDay: messagesPerDay,
+        messagesPerHour: messagesPerHour,
+        messagesPerUser: messagesPerUser,
+        messagesPerGroup: messagesPerGroup,
+        lastUpdated: DateTime.now(),
+      );
+
+      // حفظ الإحصائيات في Firestore
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('statistics')
+          .doc('chat_statistics')
+          .set(statistics.toMap());
+
+      return statistics;
+    } catch (e) {
+      print('Error generating user statistics: $e');
+      rethrow;
+    }
+  }
+
+  // تحديث الإحصائيات عند إرسال رسالة جديدة
+  Future<void> updateStatisticsOnNewMessage(String userId, Message message) async {
+    try {
+      final statsRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('statistics')
+          .doc('chat_statistics');
+
+      final statsDoc = await statsRef.get();
+      if (!statsDoc.exists) {
+        await _generateUserStatistics(userId);
+        return;
+      }
+
+      final stats = Statistics.fromMap(statsDoc.data()!);
+      final timestamp = message.timestamp;
+      final dayKey = '${timestamp.year}-${timestamp.month}-${timestamp.day}';
+      final hourKey = '${timestamp.hour}:00';
+
+      // تحديث الإحصائيات
+      final updatedStats = stats.copyWith(
+        totalMessages: stats.totalMessages + 1,
+        totalMediaMessages: message.hasMedia ? stats.totalMediaMessages + 1 : stats.totalMediaMessages,
+        totalVoiceMessages: message.type == 'voice' ? stats.totalVoiceMessages + 1 : stats.totalVoiceMessages,
+        totalImageMessages: message.type == 'image' ? stats.totalImageMessages + 1 : stats.totalImageMessages,
+        messagesPerDay: {
+          ...stats.messagesPerDay,
+          dayKey: (stats.messagesPerDay[dayKey] ?? 0) + 1,
+        },
+        messagesPerHour: {
+          ...stats.messagesPerHour,
+          hourKey: (stats.messagesPerHour[hourKey] ?? 0) + 1,
+        },
+        messagesPerUser: {
+          ...stats.messagesPerUser,
+          message.senderId: (stats.messagesPerUser[message.senderId] ?? 0) + 1,
+        },
+        lastUpdated: DateTime.now(),
+      );
+
+      await statsRef.set(updatedStats.toMap());
+    } catch (e) {
+      print('Error updating statistics: $e');
+      rethrow;
     }
   }
 }
