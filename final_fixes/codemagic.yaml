@@ -58,7 +58,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          aallaannssaarr@gmail.com.com
       app_store_connect:
         api_key: app_store_connect
         submit_to_testflight: true
