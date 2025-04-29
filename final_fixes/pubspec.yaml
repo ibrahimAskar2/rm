@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=2.19.0 <3.0.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -13,12 +13,12 @@ dependencies:
     sdk: flutter
 
   # Firebase
-  firebase_core: ^3.13.0
-  firebase_auth: ^5.5.2
-  cloud_firestore: ^5.6.6
-  firebase_storage: ^12.4.5
-  firebase_messaging: ^15.2.5
-  firebase_database: ^11.3.5
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  cloud_firestore: ^4.13.6
+  firebase_storage: ^11.5.6
+  firebase_messaging: ^14.7.9
+  firebase_database: ^10.3.8
 
   # المصادقة
   local_auth: ^2.3.0
@@ -57,6 +57,14 @@ dependencies:
   image_picker_for_web: ^2.1.0
   image_picker_ios: ^0.8.4+11
   image_picker_platform_interface: ^2.3.0
+
+  # مكتبات جديدة
+  screenshot: ^2.1.0
+  qr_flutter: ^4.1.0
+  image_gallery_saver: ^2.0.3
+  flutter_colorpicker: ^1.0.3
+  photo_view: ^0.14.0
+  flutter_staggered_grid_view: ^0.7.0
 
   # ❌ حذف flutter_sound لتفادي مشاكل منصة الويب
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_options.dart';
 import 'providers/user_provider.dart';
 import 'providers/attendance_provider.dart';
 import 'providers/chat_provider.dart';
@@ -14,6 +15,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/chats_list_screen.dart';
 import 'screens/references_screen.dart';
 import 'screens/tasks_screen.dart';
+import 'screens/product_template_screen.dart';
 // استيراد الشاشات المطلوبة لشريط التنقل
 import 'screens/statistics_screen.dart' as stats;
 import 'screens/profile_screen.dart' as profile;
@@ -24,19 +26,27 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
   
-  // إعداد إشعارات Firebase
-  FirebaseMessaging messaging = FirebaseMessaging.instance;
-  await messaging.requestPermission(
-    alert: true,
-    announcement: false,
-    badge: true,
-    carPlay: false,
-    criticalAlert: false,
-    provisional: false,
-    sound: true,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    
+    // إعداد إشعارات Firebase
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    await messaging.requestPermission(
+      alert: true,
+      announcement: false,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
+  } catch (e) {
+    debugPrint('Error initializing Firebase: $e');
+    // يمكن إضافة معالجة إضافية هنا
+  }
   
   runApp(const MyApp());
 }
@@ -186,13 +196,76 @@ class _MainScreenState extends State<MainScreen> {
     const stats.StatisticsScreen(),
     const ReferencesScreen(),
     const TasksScreen(),
-    const profile.ProfileScreen(),
-    const settings.SettingsScreen(),
+    const ProductTemplateScreen(),
   ];
   
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('فريق الأنصار'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const profile.ProfileScreen()),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const settings.SettingsScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: Text(
+                'فريق الأنصار',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('الملف الشخصي'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const profile.ProfileScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('الإعدادات'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const settings.SettingsScreen()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -226,12 +299,8 @@ class _MainScreenState extends State<MainScreen> {
             label: 'المهام',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'الملف الشخصي',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'الإعدادات',
+            icon: Icon(Icons.image),
+            label: 'قوالب المنتجات',
           ),
         ],
       ),
