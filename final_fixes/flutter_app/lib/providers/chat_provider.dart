@@ -3,20 +3,112 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 import '../services/chat_service.dart';
 import '../providers/user_provider.dart';
+import '../models/message_model.dart';
 
 class ChatProvider extends ChangeNotifier {
   final ChatService _chatService = ChatService();
   bool _isLoading = false;
   List<Map<String, dynamic>> _chats = [];
-  Map<String, List<Map<String, dynamic>>> _messages = {};
+  Map<String, List<Message>> _messages = {};
   String? _currentChatId;
+  String? _currentUserId;
+  String? _currentUserName;
   Map<String, Map<String, dynamic>> _usersInfo = {};
 
   bool get isLoading => _isLoading;
   List<Map<String, dynamic>> get chats => _chats;
-  Map<String, List<Map<String, dynamic>>> get messages => _messages;
+  Map<String, List<Message>> get messages => _messages;
   String? get currentChatId => _currentChatId;
+  String? get currentUserId => _currentUserId;
+  String? get currentUserName => _currentUserName;
   Map<String, Map<String, dynamic>> get usersInfo => _usersInfo;
+
+  void setCurrentUser(String userId, String userName) {
+    _currentUserId = userId;
+    _currentUserName = userName;
+    notifyListeners();
+  }
+
+  void setCurrentChat(String chatId) {
+    _currentChatId = chatId;
+    _loadMessages();
+    notifyListeners();
+  }
+
+  Future<void> _loadMessages() async {
+    if (_currentChatId == null) return;
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _chatService.getMessagesStream(_currentChatId!).listen((messages) {
+        _messages[_currentChatId!] = messages;
+        notifyListeners();
+      });
+    } catch (e) {
+      print('Error loading messages: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> sendTextMessage(String chatId, String text) async {
+    if (_currentUserId == null || _currentUserName == null) return;
+
+    try {
+      await _chatService.sendMessage(
+        chatId: chatId,
+        senderId: _currentUserId!,
+        senderName: _currentUserName!,
+        text: text,
+      );
+    } catch (e) {
+      print('Error sending message: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> sendImageMessage(String chatId, String imageUrl) async {
+    if (_currentUserId == null || _currentUserName == null) return;
+
+    try {
+      await _chatService.sendMessage(
+        chatId: chatId,
+        senderId: _currentUserId!,
+        senderName: _currentUserName!,
+        text: '',
+        imageUrl: imageUrl,
+      );
+    } catch (e) {
+      print('Error sending image: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> markMessageAsRead(String chatId, String messageId) async {
+    try {
+      await _chatService.markMessageAsRead(messageId);
+    } catch (e) {
+      print('Error marking message as read: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<Message>> searchChatMessages(String chatId, String searchText) async {
+    try {
+      return await _chatService.searchMessages(chatId, searchText);
+    } catch (e) {
+      print('Error searching messages: $e');
+      rethrow;
+    }
+  }
+
+  Future<String?> pickAndUploadImage() async {
+    // TODO: Implement image picking and uploading
+    return null;
+  }
 
   // تحميل قائمة الدردشات
   void loadChats() {
@@ -145,13 +237,6 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  // تحديد الدردشة الحالية وتحميل رسائلها
-  void setCurrentChat(String chatId) {
-    _currentChatId = chatId;
-    loadChatMessages(chatId);
-    notifyListeners();
-  }
-
   // تحميل رسائل دردشة معينة
   void loadChatMessages(String chatId) {
     try {
@@ -159,27 +244,27 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
 
       _chatService.getChatMessages(chatId).listen((snapshot) async {
-        final List<Map<String, dynamic>> messagesList = [];
+        final List<Message> messagesList = [];
         
         for (var doc in snapshot.docs) {
           final data = doc.data() as Map<String, dynamic>;
           final messageId = doc.id;
           
           // تحويل البيانات إلى تنسيق مناسب
-          final message = {
-            'id': messageId,
-            'type': data['type'],
-            'senderId': data['senderId'],
-            'timestamp': data['timestamp'],
-            'readBy': List<String>.from(data['readBy'] ?? []),
-            'deliveredTo': List<String>.from(data['deliveredTo'] ?? []),
-          };
+          final message = Message(
+            id: messageId,
+            type: data['type'],
+            senderId: data['senderId'],
+            timestamp: data['timestamp'],
+            readBy: List<String>.from(data['readBy'] ?? []),
+            deliveredTo: List<String>.from(data['deliveredTo'] ?? []),
+          );
           
           // إضافة البيانات الخاصة بنوع الرسالة
           if (data['type'] == 'text') {
-            message['text'] = data['text'];
+            message.text = data['text'];
           } else if (data['type'] == 'voice' || data['type'] == 'image') {
-            message['url'] = data['url'];
+            message.url = data['url'];
           }
           
           // تحميل معلومات المرسل إذا لم تكن محملة بالفعل
@@ -199,8 +284,8 @@ class ChatProvider extends ChangeNotifier {
           
           if (currentUserId != null && 
               senderId != currentUserId && 
-              !message['deliveredTo'].contains(currentUserId)) {
-            _chatService.markMessageAsDelivered(chatId, messageId);
+              !message.deliveredTo.contains(currentUserId)) {
+            _chatService.markMessageAsDelivered(chatId, message.id);
           }
           
           messagesList.add(message);
@@ -214,25 +299,6 @@ class ChatProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       print('Error loading chat messages: $e');
-    }
-  }
-
-  // إرسال رسالة نصية
-  Future<bool> sendTextMessage(String chatId, String text) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      await _chatService.sendTextMessage(chatId, text);
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      print('Error sending text message: $e');
-      return false;
     }
   }
 
@@ -252,34 +318,6 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
       print('Error sending voice message: $e');
       return false;
-    }
-  }
-
-  // إرسال صورة
-  Future<bool> sendImageMessage(String chatId, File imageFile) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      await _chatService.sendImageMessage(chatId, imageFile);
-
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      print('Error sending image message: $e');
-      return false;
-    }
-  }
-
-  // تحديث حالة قراءة الرسالة
-  Future<void> markMessageAsRead(String chatId, String messageId) async {
-    try {
-      await _chatService.markMessageAsRead(chatId, messageId);
-    } catch (e) {
-      print('Error marking message as read: $e');
     }
   }
 

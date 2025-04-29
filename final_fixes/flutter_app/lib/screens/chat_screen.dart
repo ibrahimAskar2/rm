@@ -29,7 +29,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isRecording = false;
   String _searchQuery = '';
   bool _isSearching = false;
-  List<Map<String, dynamic>> _searchResults = [];
+  List<Message> _searchResults = [];
   final ChatService _chatService = ChatService();
   bool _isLoading = false;
 
@@ -37,9 +37,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _loadMessages();
-    // تحديد الدردشة الحالية وتحميل رسائلها
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ChatProvider>(context, listen: false).setCurrentChat(widget.chatId);
+      context.read<ChatProvider>().setCurrentChat(widget.chatId);
     });
   }
 
@@ -67,7 +66,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // التمرير إلى أسفل القائمة عند إضافة رسائل جديدة
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -78,59 +76,28 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // إرسال رسالة نصية
   Future<void> _sendTextMessage() async {
     final text = _messageController.text.trim();
-    if (text.isEmpty) {
-      return;
-    }
+    if (text.isEmpty) return;
 
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final success = await chatProvider.sendTextMessage(widget.chatId, text);
-
-    if (success) {
+    try {
+      await context.read<ChatProvider>().sendTextMessage(widget.chatId, text);
       _messageController.clear();
       _scrollToBottom();
-    } else {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('فشل إرسال الرسالة')),
+          SnackBar(content: Text('خطأ في إرسال الرسالة: $e')),
         );
       }
     }
   }
 
-  // إرسال رسالة صوتية
-  Future<void> _startVoiceRecording() async {
-    // في التطبيق الفعلي، سيتم هنا بدء تسجيل الصوت
-    setState(() {
-      _isRecording = true;
-    });
-  }
-
-  Future<void> _stopVoiceRecording() async {
-    // في التطبيق الفعلي، سيتم هنا إيقاف تسجيل الصوت وإرسال الملف
-    setState(() {
-      _isRecording = false;
-    });
-
-    // مثال لإرسال ملف صوتي (سيتم استبداله بالتسجيل الفعلي)
-    // final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    // final success = await chatProvider.sendVoiceMessage(widget.chatId, audioFile);
-  }
-
-  // إرسال صورة
   Future<void> _sendImage() async {
     try {
       final imageUrl = await context.read<ChatProvider>().pickAndUploadImage();
       if (imageUrl != null && mounted) {
-        await _chatService.sendMessage(
-          chatId: widget.chatId,
-          senderId: context.read<ChatProvider>().currentUserId,
-          senderName: context.read<ChatProvider>().currentUserName,
-          text: '',
-          imageUrl: imageUrl,
-        );
+        await context.read<ChatProvider>().sendImageMessage(widget.chatId, imageUrl);
       }
     } catch (e) {
       if (mounted) {
@@ -141,7 +108,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // البحث في المحادثة
   Future<void> _searchInChat(String query) async {
     if (query.isEmpty) {
       setState(() {
@@ -150,18 +116,18 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final results = await chatProvider.searchChatMessages(widget.chatId, query);
-
-    setState(() {
-      _searchResults = results;
-    });
-  }
-
-  // تحديث حالة قراءة الرسالة
-  void _markMessageAsRead(String messageId) {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    chatProvider.markMessageAsRead(widget.chatId, messageId);
+    try {
+      final results = await context.read<ChatProvider>().searchChatMessages(widget.chatId, query);
+      setState(() {
+        _searchResults = results;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في البحث: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -186,7 +152,7 @@ class _ChatScreenState extends State<ChatScreen> {
             IconButton(
               icon: const Icon(Icons.group_add),
               onPressed: () {
-                // في التطبيق الفعلي، سيتم هنا فتح شاشة إضافة مشاركين
+                // TODO: Implement add participants
               },
             ),
         ],
@@ -218,7 +184,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          // عرض نتائج البحث
           if (_isSearching && _searchResults.isNotEmpty)
             Expanded(
               child: ListView.builder(
@@ -226,10 +191,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 itemBuilder: (context, index) {
                   final message = _searchResults[index];
                   return ListTile(
-                    title: Text(message['text'] ?? ''),
-                    subtitle: Text('${_formatTimestamp(message['timestamp'])}'),
+                    title: Text(message.text),
+                    subtitle: Text(_formatTimestamp(message.timestamp)),
                     onTap: () {
-                      // في التطبيق الفعلي، سيتم هنا التمرير إلى الرسالة في المحادثة
+                      // TODO: Scroll to message in chat
                     },
                   );
                 },
@@ -242,7 +207,6 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             )
           else
-            // عرض المحادثة
             Expanded(
               child: StreamBuilder<List<Message>>(
                 stream: _chatService.getMessagesStream(widget.chatId),
@@ -264,10 +228,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       final message = messages[index];
                       final isMe = message.senderId == context.read<ChatProvider>().currentUserId;
                       
-                      // تحديث حالة قراءة الرسالة
-                      if (!isMe && message.senderId != null && 
-                          !message.readBy.contains(message.senderId)) {
-                        _markMessageAsRead(message.id);
+                      if (!isMe && !message.isRead) {
+                        context.read<ChatProvider>().markMessageAsRead(widget.chatId, message.id);
                       }
                       
                       return _buildMessageBubble(message);
@@ -276,8 +238,6 @@ class _ChatScreenState extends State<ChatScreen> {
                 },
               ),
             ),
-          
-          // حقل إدخال الرسالة
           Container(
             padding: const EdgeInsets.all(8.0),
             decoration: BoxDecoration(
@@ -293,20 +253,10 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             child: Row(
               children: [
-                // زر إرسال الصورة
                 IconButton(
                   icon: const Icon(Icons.image),
                   onPressed: _sendImage,
                 ),
-                
-                // زر تسجيل الصوت
-                IconButton(
-                  icon: Icon(_isRecording ? Icons.stop : Icons.mic),
-                  onPressed: _isRecording ? _stopVoiceRecording : _startVoiceRecording,
-                  color: _isRecording ? Colors.red : null,
-                ),
-                
-                // حقل إدخال النص
                 Expanded(
                   child: TextField(
                     controller: _messageController,
@@ -324,8 +274,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     onSubmitted: (_) => _sendTextMessage(),
                   ),
                 ),
-                
-                // زر إرسال الرسالة
                 IconButton(
                   icon: const Icon(Icons.send),
                   onPressed: _sendTextMessage,
@@ -379,22 +327,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // تنسيق الوقت
-  String _formatTimestamp(dynamic timestamp) {
-    if (timestamp == null) {
-      return '';
-    }
-    
-    try {
-      final DateTime dateTime = timestamp is DateTime
-          ? timestamp
-          : DateTime.fromMillisecondsSinceEpoch(
-              timestamp.seconds * 1000 + (timestamp.nanoseconds ~/ 1000000),
-            );
-      
-      return '${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return '';
-    }
+  String _formatTimestamp(DateTime timestamp) {
+    return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
   }
 }
