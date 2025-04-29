@@ -36,11 +36,6 @@ dependencies:
   # إدارة الحالة
   provider: ^6.1.1
 
-  # المكالمات الصوتية
-  flutter_webrtc: ^0.9.47
-  sdp_transform: ^0.2.0
-  permission_handler: ^10.4.3
-
   # أدوات
   intl: ^0.19.0
   path_provider: ^2.1.1
