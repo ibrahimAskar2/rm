@@ -17,21 +17,41 @@ workflows:
         script: |
           pwd
           ls -la
-          cd .
           flutter doctor -v
+      - name: Navigate to project directory
+        script: |
+          cd ansar_team
+          pwd
+          ls -la
+          if [ -f "pubspec.yaml" ]; then
+            echo "Found pubspec.yaml in project directory"
+          else
+            echo "pubspec.yaml not found in project directory"
+            find . -name "pubspec.yaml"
+          fi
       - name: Get Flutter packages
-        script: flutter pub get
+        script: |
+          cd ansar_team
+          flutter pub get
       - name: Flutter analyze
-        script: flutter analyze
+        script: |
+          cd ansar_team
+          flutter analyze
       - name: Flutter test
-        script: flutter test
+        script: |
+          cd ansar_team
+          flutter test
       - name: Build APK
-        script: flutter build apk --release
+        script: |
+          cd ansar_team
+          flutter build apk --release
       - name: Build App Bundle
-        script: flutter build appbundle --release
+        script: |
+          cd ansar_team
+          flutter build appbundle --release
     artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
-      - build/app/outputs/bundle/release/app-release.aab
+      - ansar_team/build/app/outputs/flutter-apk/app-release.apk
+      - ansar_team/build/app/outputs/bundle/release/app-release.aab
     publishing:
       email:
         recipients:
