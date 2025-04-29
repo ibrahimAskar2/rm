@@ -20,7 +20,7 @@ workflows:
           flutter doctor -v
       - name: Navigate to project directory
         script: |
-          cd ansar_team
+          cd final_fixes
           pwd
           ls -la
           if [ -f "pubspec.yaml" ]; then
@@ -31,27 +31,27 @@ workflows:
           fi
       - name: Get Flutter packages
         script: |
-          cd ansar_team
+          cd final_fixes
           flutter pub get
       - name: Flutter analyze
         script: |
-          cd ansar_team
+          cd final_fixes
           flutter analyze
       - name: Flutter test
         script: |
-          cd ansar_team
+          cd final_fixes
           flutter test
       - name: Build APK
         script: |
-          cd ansar_team
+          cd final_fixes
           flutter build apk --release
       - name: Build App Bundle
         script: |
-          cd ansar_team
+          cd final_fixes
           flutter build appbundle --release
     artifacts:
-      - ansar_team/build/app/outputs/flutter-apk/app-release.apk
-      - ansar_team/build/app/outputs/bundle/release/app-release.aab
+      - final_fixes/build/app/outputs/flutter-apk/app-release.apk
+      - final_fixes/build/app/outputs/bundle/release/app-release.aab
     publishing:
       email:
         recipients:
