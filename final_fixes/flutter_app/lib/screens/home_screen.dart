@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dashboard_screen.dart';
 import 'chats_list_screen.dart';
-import 'statistics_screen.dart';
-import 'profile_screen.dart';
-import 'settings_screen.dart';
+import 'statistics_screen.dart' as stats;
+import 'profile_screen.dart' as profile;
+import 'settings_screen.dart' as settings;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,13 +15,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   
-  // قائمة الشاشات التي سيتم عرضها في التبويبات
   final List<Widget> _screens = [
     const DashboardScreen(),
     const ChatsListScreen(),
-    const StatisticsScreen(),
-    const ProfileScreen(),
-    const SettingsScreen(),
+    const stats.StatisticsScreen(),
+    const profile.ProfileScreen(),
+    const settings.SettingsScreen(),
   ];
 
   @override

@@ -15,9 +15,9 @@ import 'screens/chats_list_screen.dart';
 import 'screens/references_screen.dart';
 import 'screens/tasks_screen.dart';
 // استيراد الشاشات المطلوبة لشريط التنقل
-import 'screens/statistics_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/settings_screen.dart';
+import 'screens/statistics_screen.dart' as stats;
+import 'screens/profile_screen.dart' as profile;
+import 'screens/settings_screen.dart' as settings;
 
 // مفتاح عام للتنقل
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -183,9 +183,9 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const DashboardScreen(),
     const ChatsListScreen(),
-    const StatisticsScreen(),
-    const ProfileScreen(),
-    const SettingsScreen(),
+    const stats.StatisticsScreen(),
+    const profile.ProfileScreen(),
+    const settings.SettingsScreen(),
   ];
   
   @override
