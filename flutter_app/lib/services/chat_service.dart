@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
+import 'package:file_picker/file_picker.dart';
 import '../models/message_model.dart';
 import '../models/user_model.dart';
 import 'dart:developer' as developer;

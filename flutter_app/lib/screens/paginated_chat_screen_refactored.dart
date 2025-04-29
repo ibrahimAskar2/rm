@@ -431,7 +431,7 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
               throw Exception('لم يتم تعيين معرف المستخدم الحالي');
             }
 
-            final message = await _chatService.sendImageMessage(
+            await _chatService.sendImageMessage(
               chatId: widget.chatId,
               senderId: currentUserId,
               receiverId: widget.receiverId,
