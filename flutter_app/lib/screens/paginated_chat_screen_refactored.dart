@@ -6,6 +6,9 @@ import '../services/firestore_service.dart';
 import '../services/chat_service.dart';
 import '../services/call_service.dart';
 import '../screens/call_screen.dart';
+import '../widgets/search_messages_dialog.dart';
+import '../widgets/attachment_options_sheet.dart';
+import 'dart:developer' as developer;
 
 class PaginatedChatScreenRefactored extends StatefulWidget {
   final String chatId;
@@ -63,13 +66,13 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
       }
       
       final userInfo = await _firestoreService.getUserInfo(userId);
-      if (userInfo != null) {
+      if (userInfo != null && mounted) {
         setState(() {
           _currentUser = User.fromMap(userId, userInfo);
         });
       }
     } catch (e) {
-      print('Error loading current user: $e');
+      developer.log('Error loading current user: $e', name: 'PaginatedChatScreen');
     }
   }
 
@@ -240,7 +243,7 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
         'type': 'message',
       });
     } catch (e) {
-      print('Error sending notification: $e');
+      developer.log('Error sending notification: $e', name: 'PaginatedChatScreen');
     }
   }
 
@@ -375,21 +378,21 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
     }
 
     try {
-      final callId = await _callService.initiateCall(
-        currentUserId,
-        widget.receiverId,
-        'voice',
+      final call = await _callService.startCall(
+        callerId: currentUserId,
+        callerName: _currentUser?.name ?? 'Unknown',
+        callerImage: _currentUser?.imageUrl,
+        receiverId: widget.receiverId,
+        receiverName: widget.chatName,
       );
 
-      if (mounted) {
+      if (mounted && call != null) {
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => CallScreen(
-              callId: callId,
-              isOutgoing: true,
-              receiverId: widget.receiverId,
-              receiverName: widget.chatName,
+              call: call,
+              isIncoming: false,
             ),
           ),
         );
@@ -426,14 +429,16 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
               throw Exception('لم يتم تعيين معرف المستخدم الحالي');
             }
 
-            final message = await _chatService.sendImageMessage(
+            await _chatService.sendImageMessage(
               chatId: widget.chatId,
               senderId: currentUserId,
               receiverId: widget.receiverId,
               imageFile: file,
             );
 
-            _loadMessages();
+            if (mounted) {
+              _loadMessages();
+            }
           } catch (e) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
