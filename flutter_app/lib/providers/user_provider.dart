@@ -102,4 +102,17 @@ class UserProvider extends ChangeNotifier {
       rethrow;
     }
   }
+
+  Future<bool> isBiometricAvailable() async {
+    // TODO: تنفيذ التحقق من توفر البصمة
+    return false;
+  }
+
+  Future<void> signInWithBiometrics() async {
+    // TODO: تنفيذ تسجيل الدخول بالبصمة
+  }
+
+  Future<void> signIn(String email, String password) async {
+    await login(email, password);
+  }
 }

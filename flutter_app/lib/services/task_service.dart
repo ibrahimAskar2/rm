@@ -83,24 +83,18 @@ class TaskService {
     int priority = 2,
   }) async {
     try {
-      // إنشاء كائن Task جديد
       final task = Task.create(
         title: title,
         description: description,
-        assignedBy: assignerId,
-        assignedByName: assignerName,
-        assignedTo: assigneeId,
-        assignedToName: assigneeName,
+        assignerId: assignerId,
+        assignerName: assignerName,
+        assigneeId: assigneeId,
+        assigneeName: assigneeName,
         dueDate: dueDate,
         priority: priority,
       );
-      
-      // حفظ المهمة في Firestore
-      await _firestore
-          .collection('tasks')
-          .doc(task.id)
-          .set(task.toMap());
-      
+
+      await _firestore.collection('tasks').doc(task.id).set(task.toMap());
       return task;
     } catch (e) {
       print('Error creating task: $e');
@@ -109,33 +103,12 @@ class TaskService {
   }
 
   // تحديث حالة مهمة
-  Future<Task> updateTaskStatus(String taskId, String newStatus) async {
+  Future<void> updateTaskStatus(String taskId, String status) async {
     try {
-      // الحصول على المهمة الحالية
-      final task = await getTaskDetails(taskId);
-      if (task == null) {
-        throw Exception('المهمة غير موجودة');
-      }
-      
-      // تحديث حالة المهمة
-      final updatedTask = task.updateStatus(newStatus);
-      
-      // حفظ التغييرات في Firestore
-      final updateData = {
-        'status': newStatus,
-      };
-      
-      // إضافة completedAt فقط إذا كانت موجودة
-      if (updatedTask.completedAt != null) {
-        updateData['completedAt'] = Timestamp.fromDate(updatedTask.completedAt!);
-      }
-      
-      await _firestore
-          .collection('tasks')
-          .doc(taskId)
-          .update(updateData);
-      
-      return updatedTask;
+      await _firestore.collection('tasks').doc(taskId).update({
+        'status': status,
+        'completedAt': status == 'completed' ? Timestamp.now() : null,
+      });
     } catch (e) {
       print('Error updating task status: $e');
       rethrow;
@@ -143,67 +116,27 @@ class TaskService {
   }
 
   // إضافة تعليق إلى مهمة
-  Future<Task> addCommentToTask({
-    required String taskId,
-    required String userId,
-    required String userName,
-    required String text,
-    String userImage = '',
-  }) async {
+  Future<void> addComment(String taskId, String text, String userId, String userName) async {
     try {
-      // إنشاء كائن Comment جديد
-      final comment = Comment(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        userId: userId,
-        userName: userName,
-        userImage: userImage,
-        text: text,
-        timestamp: DateTime.now(),
-      );
-      
-      // الحصول على المهمة الحالية
-      final task = await getTaskDetails(taskId);
-      if (task == null) {
-        throw Exception('المهمة غير موجودة');
-      }
-      
-      // إضافة التعليق إلى المهمة
-      final updatedTask = task.addComment(comment);
-      
-      // حفظ التغييرات في Firestore
-      final commentMap = comment.toMap();
-      await _firestore
-          .collection('tasks')
-          .doc(taskId)
-          .update({
-            'comments': FieldValue.arrayUnion([commentMap]),
-          });
-      
-      return updatedTask;
+      final comment = {
+        'text': text,
+        'userId': userId,
+        'userName': userName,
+        'timestamp': Timestamp.now(),
+      };
+
+      await _firestore.collection('tasks').doc(taskId).update({
+        'comments': FieldValue.arrayUnion([comment]),
+      });
     } catch (e) {
-      print('Error adding comment to task: $e');
+      print('Error adding comment: $e');
       rethrow;
     }
   }
 
   // إضافة مرفق إلى مهمة
-  Future<Task> addAttachmentToTask({
-    required String taskId,
-    required String name,
-    required String url,
-    required String type,
-    required int size,
-    required String uploaderId,
-    required String uploaderName,
-  }) async {
+  Future<void> addAttachment(String taskId, String name, String url, String type, String size, String uploaderId, String uploaderName) async {
     try {
-      // الحصول على المهمة الحالية
-      final task = await getTaskDetails(taskId);
-      if (task == null) {
-        throw Exception('المهمة غير موجودة');
-      }
-      
-      // إنشاء كائن Attachment جديد
       final attachment = {
         'name': name,
         'url': url,
@@ -213,21 +146,12 @@ class TaskService {
         'uploaderName': uploaderName,
         'timestamp': Timestamp.now(),
       };
-      
-      // إضافة المرفق إلى المهمة
-      final updatedTask = task.addAttachment(attachment);
-      
-      // حفظ التغييرات في Firestore
-      await _firestore
-          .collection('tasks')
-          .doc(taskId)
-          .update({
-            'attachments': FieldValue.arrayUnion([attachment]),
-          });
-      
-      return updatedTask;
+
+      await _firestore.collection('tasks').doc(taskId).update({
+        'attachments': FieldValue.arrayUnion([attachment]),
+      });
     } catch (e) {
-      print('Error adding attachment to task: $e');
+      print('Error adding attachment: $e');
       rethrow;
     }
   }
@@ -274,5 +198,30 @@ class TaskService {
       print('Error getting task statistics: $e');
       rethrow;
     }
+  }
+
+  Stream<List<Task>> getTasks() {
+    return _firestore
+        .collection('tasks')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Task.fromMap(doc.id, doc.data()))
+          .toList();
+    });
+  }
+
+  Stream<List<Task>> getUserTasks(String userId) {
+    return _firestore
+        .collection('tasks')
+        .where('assigneeId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Task.fromMap(doc.id, doc.data()))
+          .toList();
+    });
   }
 }
