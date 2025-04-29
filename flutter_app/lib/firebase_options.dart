@@ -54,8 +54,6 @@ class DefaultFirebaseOptions {
     messagingSenderId: '631101559036',
     projectId: 'app-ansar',
     storageBucket: 'app-ansar.firebasestorage.app',
-    iosClientId: '631101559036-ios-client-id',
-    iosBundleId: 'com.ansar.ansarTeam',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -64,7 +62,5 @@ class DefaultFirebaseOptions {
     messagingSenderId: '631101559036',
     projectId: 'app-ansar',
     storageBucket: 'app-ansar.firebasestorage.app',
-    iosClientId: '631101559036-macos-client-id',
-    iosBundleId: 'com.ansar.ansarTeam',
   );
 } 
