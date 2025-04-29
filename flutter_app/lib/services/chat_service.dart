@@ -4,6 +4,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import '../models/message_model.dart';
 import '../models/user_model.dart';
+import 'dart:developer' as developer;
+import 'package:uuid/uuid.dart';
 
 class ChatService {
   // Singleton pattern
@@ -33,7 +35,7 @@ class ChatService {
           .orderBy('lastMessageTimestamp', descending: true)
           .snapshots();
     } catch (e) {
-      print('Error getting chats: $e');
+      developer.log('Error getting chats: $e', name: 'ChatService');
       rethrow;
     }
   }
@@ -47,7 +49,7 @@ class ChatService {
       }
       return null;
     } catch (e) {
-      print('Error getting user info: $e');
+      developer.log('Error getting user info: $e', name: 'ChatService');
       rethrow;
     }
   }
@@ -86,7 +88,7 @@ class ChatService {
       
       return chatRef.id;
     } catch (e) {
-      print('Error creating private chat: $e');
+      developer.log('Error creating private chat: $e', name: 'ChatService');
       rethrow;
     }
   }
@@ -117,7 +119,7 @@ class ChatService {
       
       return chatRef.id;
     } catch (e) {
-      print('Error creating group chat: $e');
+      developer.log('Error creating group chat: $e', name: 'ChatService');
       rethrow;
     }
   }
@@ -129,7 +131,7 @@ class ChatService {
         'participants': FieldValue.arrayUnion(newParticipants),
       });
     } catch (e) {
-      print('Error adding participants to group: $e');
+      developer.log('Error adding participants to group: $e', name: 'ChatService');
       rethrow;
     }
   }
@@ -150,7 +152,7 @@ class ChatService {
             'deliveredTo': FieldValue.arrayUnion([currentUserId]),
           });
     } catch (e) {
-      print('Error marking message as delivered: $e');
+      developer.log('Error marking message as delivered: $e', name: 'ChatService');
       rethrow;
     }
   }
@@ -171,118 +173,132 @@ class ChatService {
             'readBy': FieldValue.arrayUnion([currentUserId]),
           });
     } catch (e) {
-      print('Error marking message as read: $e');
+      developer.log('Error marking message as read: $e', name: 'ChatService');
       rethrow;
     }
   }
 
   // إرسال رسالة نصية
-  Future<void> sendTextMessage(String chatId, String text) async {
+  Future<Message> sendTextMessage({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required String content,
+  }) async {
     try {
-      if (currentUserId == null) {
-        throw Exception('لم يتم تسجيل الدخول');
-      }
-      
-      final messageRef = _firestore
+      final message = Message.createText(
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        content: content,
+      );
+
+      await _firestore
           .collection('chats')
           .doc(chatId)
           .collection('messages')
-          .doc();
-      
-      await messageRef.set({
-        'type': 'text',
-        'text': text,
-        'senderId': currentUserId,
-        'timestamp': Timestamp.now(),
-        'readBy': [],
-        'deliveredTo': [],
-      });
-      
-      // تحديث آخر رسالة في الدردشة
+          .doc(message.id)
+          .set(message.toMap());
+
       await _firestore.collection('chats').doc(chatId).update({
-        'lastMessage': text,
-        'lastMessageTimestamp': Timestamp.now(),
+        'lastMessage': content,
+        'lastMessageTimestamp': Timestamp.fromDate(message.timestamp),
+        'lastMessageSenderId': senderId,
       });
+
+      return message;
     } catch (e) {
-      print('Error sending text message: $e');
+      developer.log('Error sending text message: $e', name: 'ChatService');
       rethrow;
     }
   }
 
   // إرسال رسالة صوتية
-  Future<void> sendVoiceMessage(String chatId, File audioFile) async {
+  Future<Message> sendVoiceMessage({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required File audioFile,
+  }) async {
     try {
-      if (currentUserId == null) {
-        throw Exception('لم يتم تسجيل الدخول');
-      }
-      
       // رفع الملف الصوتي إلى Firebase Storage
       final storageRef = _storage.ref().child('chats/$chatId/voice/${DateTime.now().millisecondsSinceEpoch}.m4a');
       await storageRef.putFile(audioFile);
       final downloadUrl = await storageRef.getDownloadURL();
       
-      // إنشاء رسالة جديدة
-      final messageRef = _firestore
+      final message = Message(
+        id: const Uuid().v4(),
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        content: 'رسالة صوتية',
+        type: 'voice',
+        mediaUrl: downloadUrl,
+        timestamp: DateTime.now(),
+        isRead: false,
+        readBy: [senderId],
+        deliveredTo: [senderId],
+        mediaData: {
+          'duration': 0, // TODO: إضافة مدة الملف الصوتي
+          'size': await audioFile.length(),
+        },
+      );
+
+      await _firestore
           .collection('chats')
           .doc(chatId)
           .collection('messages')
-          .doc();
-      
-      await messageRef.set({
-        'type': 'voice',
-        'url': downloadUrl,
-        'senderId': currentUserId,
-        'timestamp': Timestamp.now(),
-        'readBy': [],
-        'deliveredTo': [],
-      });
-      
-      // تحديث آخر رسالة في الدردشة
+          .doc(message.id)
+          .set(message.toMap());
+
       await _firestore.collection('chats').doc(chatId).update({
         'lastMessage': 'رسالة صوتية',
-        'lastMessageTimestamp': Timestamp.now(),
+        'lastMessageTimestamp': Timestamp.fromDate(message.timestamp),
+        'lastMessageSenderId': senderId,
       });
+
+      return message;
     } catch (e) {
-      print('Error sending voice message: $e');
+      developer.log('Error sending voice message: $e', name: 'ChatService');
       rethrow;
     }
   }
 
   // إرسال صورة
-  Future<void> sendImageMessage(String chatId, File imageFile) async {
+  Future<Message> sendImageMessage({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required PlatformFile imageFile,
+  }) async {
     try {
-      if (currentUserId == null) {
-        throw Exception('لم يتم تسجيل الدخول');
-      }
-      
-      // رفع الصورة إلى Firebase Storage
-      final storageRef = _storage.ref().child('chats/$chatId/images/${DateTime.now().millisecondsSinceEpoch}.jpg');
-      await storageRef.putFile(imageFile);
-      final downloadUrl = await storageRef.getDownloadURL();
-      
-      // إنشاء رسالة جديدة
-      final messageRef = _firestore
+      final ref = _storage.ref().child('chat_images/${DateTime.now().millisecondsSinceEpoch}');
+      final uploadTask = await ref.putData(imageFile.bytes!);
+      final imageUrl = await uploadTask.ref.getDownloadURL();
+
+      final message = Message.createImage(
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        mediaUrl: imageUrl,
+      );
+
+      await _firestore
           .collection('chats')
           .doc(chatId)
           .collection('messages')
-          .doc();
-      
-      await messageRef.set({
-        'type': 'image',
-        'url': downloadUrl,
-        'senderId': currentUserId,
-        'timestamp': Timestamp.now(),
-        'readBy': [],
-        'deliveredTo': [],
-      });
-      
-      // تحديث آخر رسالة في الدردشة
+          .doc(message.id)
+          .set(message.toMap());
+
       await _firestore.collection('chats').doc(chatId).update({
         'lastMessage': 'صورة',
-        'lastMessageTimestamp': Timestamp.now(),
+        'lastMessageTimestamp': Timestamp.fromDate(message.timestamp),
+        'lastMessageSenderId': senderId,
       });
+
+      return message;
     } catch (e) {
-      print('Error sending image message: $e');
+      developer.log('Error sending image message: $e', name: 'ChatService');
       rethrow;
     }
   }
@@ -315,7 +331,7 @@ class ChatService {
       
       return messages;
     } catch (e) {
-      print('Error getting chat messages: $e');
+      developer.log('Error getting chat messages: $e', name: 'ChatService');
       rethrow;
     }
   }
@@ -340,13 +356,13 @@ class ChatService {
       // تصفية النتائج على جانب العميل
       final messages = querySnapshot.docs
           .map((doc) => Message.fromMap(doc.id, doc.data() as Map<String, dynamic>))
-          .where((message) => message.text.toLowerCase().contains(searchText.toLowerCase()))
+          .where((message) => message.content.toLowerCase().contains(searchText.toLowerCase()))
           .take(limit)
           .toList();
       
       return messages;
     } catch (e) {
-      print('Error searching chat messages: $e');
+      developer.log('Error searching chat messages: $e', name: 'ChatService');
       rethrow;
     }
   }
@@ -393,7 +409,7 @@ class ChatService {
       
       return chatRef.id;
     } catch (e) {
-      print('Error creating chat: $e');
+      developer.log('Error creating chat: $e', name: 'ChatService');
       rethrow;
     }
   }
@@ -441,7 +457,7 @@ class ChatService {
         'participantCount': FieldValue.increment(1),
       });
     } catch (e) {
-      print('Error adding user to group chat: $e');
+      developer.log('Error adding user to group chat: $e', name: 'ChatService');
       rethrow;
     }
   }
@@ -490,7 +506,35 @@ class ChatService {
         'participantCount': FieldValue.increment(-1),
       });
     } catch (e) {
-      print('Error removing user from group chat: $e');
+      developer.log('Error removing user from group chat: $e', name: 'ChatService');
+      rethrow;
+    }
+  }
+
+  Stream<List<Message>> getChatMessagesStream(String chatId) {
+    return _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => Message.fromMap(doc.id, doc.data()))
+          .toList();
+    });
+  }
+
+  Future<void> deleteMessage(String chatId, String messageId) async {
+    try {
+      await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .delete();
+    } catch (e) {
+      developer.log('Error deleting message: $e', name: 'ChatService');
       rethrow;
     }
   }

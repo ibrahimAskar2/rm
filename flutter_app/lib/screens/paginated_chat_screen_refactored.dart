@@ -371,9 +371,11 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
   void _startVoiceCall() async {
     final currentUserId = _firestoreService.currentUserId;
     if (currentUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لم يتم تعيين معرف المستخدم الحالي')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لم يتم تعيين معرف المستخدم الحالي')),
+        );
+      }
       return;
     }
 
@@ -429,7 +431,7 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
               throw Exception('لم يتم تعيين معرف المستخدم الحالي');
             }
 
-            await _chatService.sendImageMessage(
+            final message = await _chatService.sendImageMessage(
               chatId: widget.chatId,
               senderId: currentUserId,
               receiverId: widget.receiverId,
@@ -437,7 +439,7 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
             );
 
             if (mounted) {
-              _loadMessages();
+              await _loadMessages();
             }
           } catch (e) {
             if (mounted) {

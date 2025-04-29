@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uuid/uuid.dart';
 
 class Message {
   final String id;
@@ -6,12 +7,12 @@ class Message {
   final String senderId;
   final String receiverId;
   final String content;
+  final String type;
+  final String? mediaUrl;
   final DateTime timestamp;
   final bool isRead;
   final List<String> readBy;
   final List<String> deliveredTo;
-  final String type;
-  final String? mediaUrl;
   final Map<String, dynamic>? mediaData;
 
   Message({
@@ -20,47 +21,14 @@ class Message {
     required this.senderId,
     required this.receiverId,
     required this.content,
+    required this.type,
+    this.mediaUrl,
     required this.timestamp,
     this.isRead = false,
     this.readBy = const [],
     this.deliveredTo = const [],
-    this.type = 'text',
-    this.mediaUrl,
     this.mediaData,
   });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'chatId': chatId,
-      'senderId': senderId,
-      'receiverId': receiverId,
-      'content': content,
-      'timestamp': Timestamp.fromDate(timestamp),
-      'isRead': isRead,
-      'readBy': readBy,
-      'deliveredTo': deliveredTo,
-      'type': type,
-      'mediaUrl': mediaUrl,
-      'mediaData': mediaData,
-    };
-  }
-
-  factory Message.fromMap(String id, Map<String, dynamic> map) {
-    return Message(
-      id: id,
-      chatId: map['chatId'] ?? '',
-      senderId: map['senderId'] ?? '',
-      receiverId: map['receiverId'] ?? '',
-      content: map['content'] ?? '',
-      timestamp: (map['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      isRead: map['isRead'] ?? false,
-      readBy: List<String>.from(map['readBy'] ?? []),
-      deliveredTo: List<String>.from(map['deliveredTo'] ?? []),
-      type: map['type'] ?? 'text',
-      mediaUrl: map['mediaUrl'],
-      mediaData: map['mediaData'],
-    );
-  }
 
   factory Message.createText({
     required String chatId,
@@ -69,42 +37,71 @@ class Message {
     required String content,
   }) {
     return Message(
-      id: FirebaseFirestore.instance.collection('chats').doc(chatId).collection('messages').doc().id,
+      id: const Uuid().v4(),
       chatId: chatId,
       senderId: senderId,
       receiverId: receiverId,
       content: content,
+      type: 'text',
       timestamp: DateTime.now(),
       isRead: false,
       readBy: [senderId],
       deliveredTo: [senderId],
-      type: 'text',
     );
   }
 
-  factory Message.createMedia({
+  factory Message.createImage({
     required String chatId,
     required String senderId,
     required String receiverId,
-    required String content,
-    required String mediaType,
     required String mediaUrl,
-    required Map<String, dynamic> mediaData,
   }) {
     return Message(
-      id: FirebaseFirestore.instance.collection('chats').doc(chatId).collection('messages').doc().id,
+      id: const Uuid().v4(),
       chatId: chatId,
       senderId: senderId,
       receiverId: receiverId,
-      content: content,
+      content: 'صورة',
+      type: 'image',
+      mediaUrl: mediaUrl,
       timestamp: DateTime.now(),
       isRead: false,
       readBy: [senderId],
       deliveredTo: [senderId],
-      type: mediaType,
-      mediaUrl: mediaUrl,
-      mediaData: mediaData,
     );
+  }
+
+  factory Message.fromMap(String id, Map<String, dynamic> map) {
+    return Message(
+      id: id,
+      chatId: map['chatId'] as String,
+      senderId: map['senderId'] as String,
+      receiverId: map['receiverId'] as String,
+      content: map['content'] as String,
+      type: map['type'] as String,
+      mediaUrl: map['mediaUrl'] as String?,
+      timestamp: (map['timestamp'] as Timestamp).toDate(),
+      isRead: map['isRead'] as bool? ?? false,
+      readBy: List<String>.from(map['readBy'] ?? []),
+      deliveredTo: List<String>.from(map['deliveredTo'] ?? []),
+      mediaData: map['mediaData'],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'chatId': chatId,
+      'senderId': senderId,
+      'receiverId': receiverId,
+      'content': content,
+      'type': type,
+      'mediaUrl': mediaUrl,
+      'timestamp': Timestamp.fromDate(timestamp),
+      'isRead': isRead,
+      'readBy': readBy,
+      'deliveredTo': deliveredTo,
+      'mediaData': mediaData,
+    };
   }
 
   Message markAsReadBy(String userId) {
@@ -121,12 +118,12 @@ class Message {
       senderId: senderId,
       receiverId: receiverId,
       content: content,
+      type: type,
+      mediaUrl: mediaUrl,
       timestamp: timestamp,
       isRead: true,
       readBy: updatedReadBy,
       deliveredTo: deliveredTo,
-      type: type,
-      mediaUrl: mediaUrl,
       mediaData: mediaData,
     );
   }
@@ -145,20 +142,20 @@ class Message {
       senderId: senderId,
       receiverId: receiverId,
       content: content,
+      type: type,
+      mediaUrl: mediaUrl,
       timestamp: timestamp,
       isRead: isRead,
       readBy: readBy,
       deliveredTo: updatedDeliveredTo,
-      type: type,
-      mediaUrl: mediaUrl,
       mediaData: mediaData,
     );
   }
 
   bool get hasMedia => type != 'text';
   String get mediaType => type;
-  String get mediaUrlString => mediaUrl ?? (mediaData?['url'] ?? '');
-  String get mediaSize => mediaData?['size'] ?? '';
+  String get mediaUrlString => mediaUrl ?? '';
+  String get mediaSize => mediaData?['size']?.toString() ?? '';
   int get mediaDuration => mediaData?['duration'] ?? 0;
 
   Message copyWith({
@@ -167,12 +164,12 @@ class Message {
     String? senderId,
     String? receiverId,
     String? content,
+    String? type,
+    String? mediaUrl,
     DateTime? timestamp,
     bool? isRead,
     List<String>? readBy,
     List<String>? deliveredTo,
-    String? type,
-    String? mediaUrl,
     Map<String, dynamic>? mediaData,
   }) {
     return Message(
@@ -181,12 +178,12 @@ class Message {
       senderId: senderId ?? this.senderId,
       receiverId: receiverId ?? this.receiverId,
       content: content ?? this.content,
+      type: type ?? this.type,
+      mediaUrl: mediaUrl ?? this.mediaUrl,
       timestamp: timestamp ?? this.timestamp,
       isRead: isRead ?? this.isRead,
       readBy: readBy ?? this.readBy,
       deliveredTo: deliveredTo ?? this.deliveredTo,
-      type: type ?? this.type,
-      mediaUrl: mediaUrl ?? this.mediaUrl,
       mediaData: mediaData ?? this.mediaData,
     );
   }
