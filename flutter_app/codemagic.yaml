@@ -3,17 +3,18 @@ workflows:
     name: Android Build
     max_build_duration: 60
     instance_type: mac_mini_m2
+    integrations:
+      firebase:
+        distribution_groups: testers
     environment:
       flutter: stable
       xcode: latest
       node: latest
-      java: 17
       groups:
         - google_credentials
+        - firebase_credentials
       vars:
-        PACKAGE_NAME: "com.ansar.ansar_team"
-        GRADLE_VERSION: "7.5"
-        FLUTTER_VERSION: "stable"
+        PACKAGE_NAME: "com.ansarteam.app"
     scripts:
       - name: Setup Flutter
         script: |
@@ -65,5 +66,36 @@ workflows:
     publishing:
       email:
         recipients:
-          - aallaannssaarr@gmail.com
+          - your-email@example.com
+
+  ios-workflow:
+    name: iOS Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      firebase:
+        distribution_groups: testers
+    environment:
+      flutter: stable
+      xcode: latest
+      node: latest
+      groups:
+        - google_credentials
+        - firebase_credentials
+        - ios_certificates
+      vars:
+        BUNDLE_ID: "com.ansarteam.app"
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Flutter analyze
+        script: flutter analyze
+      - name: Build IPA
+        script: flutter build ipa --release
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
 
