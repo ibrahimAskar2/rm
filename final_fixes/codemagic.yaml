@@ -4,20 +4,29 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
+      flutter: stable
+      xcode: latest
+      node: latest
+      java: 17
+      groups:
+        - google_credentials
       vars:
         PACKAGE_NAME: "com.ansar.ansar_team"
         GRADLE_VERSION: "7.5"
+        FLUTTER_VERSION: "stable"
     scripts:
       - name: Setup Flutter
         script: |
           flutter --version
           flutter upgrade
           flutter pub cache repair
+          flutter doctor -v
       - name: Verify project structure
         script: |
           pwd
           ls -la
-          flutter doctor -v
+          echo "Current directory contents:"
+          find . -type f -name "pubspec.yaml"
       - name: Navigate to project directory
         script: |
           cd final_fixes
@@ -25,6 +34,7 @@ workflows:
           ls -la
           if [ -f "pubspec.yaml" ]; then
             echo "Found pubspec.yaml in project directory"
+            cat pubspec.yaml | grep "name:"
           else
             echo "pubspec.yaml not found in project directory"
             find . -name "pubspec.yaml"
@@ -44,11 +54,11 @@ workflows:
       - name: Build APK
         script: |
           cd final_fixes
-          flutter build apk --release
+          flutter build apk --release --verbose
       - name: Build App Bundle
         script: |
           cd final_fixes
-          flutter build appbundle --release
+          flutter build appbundle --release --verbose
     artifacts:
       - final_fixes/build/app/outputs/flutter-apk/app-release.apk
       - final_fixes/build/app/outputs/bundle/release/app-release.aab
