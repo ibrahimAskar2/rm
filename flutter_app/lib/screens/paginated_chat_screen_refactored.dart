@@ -336,14 +336,14 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (message.type == MessageType.text)
+            if (message.type == 'text')
               Text(
                 message.content,
                 style: const TextStyle(fontSize: 16),
               )
-            else if (message.type == MessageType.image)
+            else if (message.type == 'image')
               Image.network(
-                message.mediaUrl!,
+                message.mediaUrl ?? '',
                 width: 200,
                 height: 200,
                 fit: BoxFit.cover,
@@ -447,6 +447,7 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
   }
 
   void _showAttachmentOptions() {
+    final context = this.context;
     showModalBottomSheet(
       context: context,
       builder: (context) => AttachmentOptionsSheet(
