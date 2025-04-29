@@ -16,6 +16,7 @@ import 'screens/chats_list_screen.dart';
 import 'screens/references_screen.dart';
 import 'screens/tasks_screen.dart';
 import 'screens/product_template_screen.dart';
+import 'screens/firestore_test_screen.dart';
 // استيراد الشاشات المطلوبة لشريط التنقل
 import 'screens/statistics_screen.dart' as stats;
 import 'screens/profile_screen.dart' as profile;
@@ -197,6 +198,7 @@ class _MainScreenState extends State<MainScreen> {
     const ReferencesScreen(),
     const TasksScreen(),
     const ProductTemplateScreen(),
+    const FirestoreTestScreen(),
   ];
   
   @override
@@ -301,6 +303,10 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.image),
             label: 'قوالب المنتجات',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.cloud),
+            label: 'اختبار Firestore',
           ),
         ],
       ),

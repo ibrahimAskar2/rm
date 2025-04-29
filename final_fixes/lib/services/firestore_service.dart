@@ -384,4 +384,41 @@ class FirestoreService {
       rethrow;
     }
   }
+
+  // دالة للتحقق من الاتصال بـ Firestore
+  Future<bool> testConnection() async {
+    try {
+      // محاولة قراءة وثيقة من مجموعة اختبار
+      await _firestore.collection('test').doc('connection_test').get();
+      return true;
+    } catch (e) {
+      print('خطأ في الاتصال بـ Firestore: $e');
+      return false;
+    }
+  }
+
+  // دالة لإضافة وثيقة اختبار
+  Future<void> addTestDocument() async {
+    try {
+      await _firestore.collection('test').doc('connection_test').set({
+        'timestamp': FieldValue.serverTimestamp(),
+        'status': 'connected',
+        'message': 'تم الاتصال بنجاح'
+      });
+    } catch (e) {
+      print('خطأ في إضافة وثيقة الاختبار: $e');
+      rethrow;
+    }
+  }
+
+  // دالة لقراءة وثيقة اختبار
+  Future<Map<String, dynamic>?> getTestDocument() async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('test').doc('connection_test').get();
+      return doc.data() as Map<String, dynamic>?;
+    } catch (e) {
+      print('خطأ في قراءة وثيقة الاختبار: $e');
+      return null;
+    }
+  }
 }
