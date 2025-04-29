@@ -29,7 +29,7 @@ workflows:
           find . -type f -name "pubspec.yaml"
       - name: Navigate to project directory
         script: |
-          cd final_fixes
+          cd flutter_app
           pwd
           ls -la
           if [ -f "pubspec.yaml" ]; then
@@ -41,27 +41,27 @@ workflows:
           fi
       - name: Get Flutter packages
         script: |
-          cd final_fixes
+          cd flutter_app
           flutter pub get
       - name: Flutter analyze
         script: |
-          cd final_fixes
+          cd flutter_app
           flutter analyze
       - name: Flutter test
         script: |
-          cd final_fixes
+          cd flutter_app
           flutter test
       - name: Build APK
         script: |
-          cd final_fixes
+          cd flutter_app
           flutter build apk --release --verbose
       - name: Build App Bundle
         script: |
-          cd final_fixes
+          cd flutter_app
           flutter build appbundle --release --verbose
     artifacts:
-      - final_fixes/build/app/outputs/flutter-apk/app-release.apk
-      - final_fixes/build/app/outputs/bundle/release/app-release.aab
+      - flutter_app/build/app/outputs/flutter-apk/app-release.apk
+      - flutter_app/build/app/outputs/bundle/release/app-release.aab
     publishing:
       email:
         recipients:
