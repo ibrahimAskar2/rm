@@ -32,6 +32,7 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Message> _searchResults = [];
   final ChatService _chatService = ChatService();
   bool _isLoading = false;
+  DateTime? _lastTypingTime;
 
   @override
   void initState() {
@@ -128,6 +129,51 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
     }
+  }
+
+  void _handleTyping(String text) {
+    final now = DateTime.now();
+    if (_lastTypingTime == null || 
+        now.difference(_lastTypingTime!) > const Duration(seconds: 2)) {
+      _lastTypingTime = now;
+      context.read<ChatProvider>().updateTypingStatus(widget.chatId, true);
+    }
+  }
+
+  void _showMessageOptions(Message message) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.reply),
+            title: const Text('رد'),
+            onTap: () {
+              // TODO: Implement reply functionality
+              Navigator.pop(context);
+            },
+          ),
+          if (message.senderId == context.read<ChatProvider>().currentUserId)
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('تعديل'),
+              onTap: () {
+                // TODO: Implement edit functionality
+                Navigator.pop(context);
+              },
+            ),
+          ListTile(
+            leading: const Icon(Icons.delete),
+            title: const Text('حذف'),
+            onTap: () {
+              // TODO: Implement delete functionality
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -301,11 +347,40 @@ class _ChatScreenState extends State<ChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (message.imageUrl != null)
-              Image.network(
-                message.imageUrl!,
-                width: 200,
-                height: 200,
-                fit: BoxFit.cover,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  message.imageUrl!,
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      width: 200,
+                      height: 200,
+                      color: Colors.grey[200],
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 200,
+                      height: 200,
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: Icon(Icons.error),
+                      ),
+                    );
+                  },
+                ),
               ),
             if (message.text.isNotEmpty)
               Text(
@@ -314,12 +389,33 @@ class _ChatScreenState extends State<ChatScreen> {
                   color: isMe ? Colors.white : Colors.black,
                 ),
               ),
-            Text(
-              message.senderName,
-              style: TextStyle(
-                fontSize: 12,
-                color: isMe ? Colors.white70 : Colors.black54,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  message.senderName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isMe ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _formatTimestamp(message.timestamp),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isMe ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    message.isRead ? Icons.done_all : Icons.done,
+                    size: 16,
+                    color: message.isRead ? Colors.blue : Colors.white70,
+                  ),
+                ],
+              ],
             ),
           ],
         ),
@@ -328,6 +424,16 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   String _formatTimestamp(DateTime timestamp) {
-    return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final messageDate = DateTime(timestamp.year, timestamp.month, timestamp.day);
+
+    if (messageDate == today) {
+      return '${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+    } else if (messageDate == today.subtract(const Duration(days: 1))) {
+      return 'أمس ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
+    } else {
+      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
+    }
   }
 }

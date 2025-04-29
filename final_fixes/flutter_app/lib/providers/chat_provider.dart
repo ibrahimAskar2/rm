@@ -4,6 +4,7 @@ import 'dart:io';
 import '../services/chat_service.dart';
 import '../providers/user_provider.dart';
 import '../models/message_model.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ChatProvider extends ChangeNotifier {
   final ChatService _chatService = ChatService();
@@ -14,6 +15,7 @@ class ChatProvider extends ChangeNotifier {
   String? _currentUserId;
   String? _currentUserName;
   Map<String, Map<String, dynamic>> _usersInfo = {};
+  Map<String, bool> _typingStatus = {};
 
   bool get isLoading => _isLoading;
   List<Map<String, dynamic>> get chats => _chats;
@@ -64,6 +66,7 @@ class ChatProvider extends ChangeNotifier {
         senderName: _currentUserName!,
         text: text,
       );
+      updateTypingStatus(chatId, false);
     } catch (e) {
       print('Error sending message: $e');
       rethrow;
@@ -106,8 +109,55 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<String?> pickAndUploadImage() async {
-    // TODO: Implement image picking and uploading
-    return null;
+    try {
+      final imagePicker = ImagePicker();
+      final pickedFile = await imagePicker.pickImage(source: ImageSource.gallery);
+      
+      if (pickedFile != null) {
+        final file = File(pickedFile.path);
+        return await _chatService.uploadImage(file);
+      }
+      return null;
+    } catch (e) {
+      print('Error picking and uploading image: $e');
+      rethrow;
+    }
+  }
+
+  void updateTypingStatus(String chatId, bool isTyping) {
+    _typingStatus[chatId] = isTyping;
+    notifyListeners();
+  }
+
+  Stream<bool> getTypingStatus(String chatId) {
+    return Stream.value(_typingStatus[chatId] ?? false);
+  }
+
+  Future<void> deleteMessage(String chatId, String messageId) async {
+    try {
+      await _chatService.deleteMessage(chatId, messageId);
+    } catch (e) {
+      print('Error deleting message: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> editMessage(String chatId, String messageId, String newText) async {
+    try {
+      await _chatService.editMessage(chatId, messageId, newText);
+    } catch (e) {
+      print('Error editing message: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> replyToMessage(String chatId, String messageId, String replyText) async {
+    try {
+      await _chatService.replyToMessage(chatId, messageId, replyText);
+    } catch (e) {
+      print('Error replying to message: $e');
+      rethrow;
+    }
   }
 
   // تحميل قائمة الدردشات

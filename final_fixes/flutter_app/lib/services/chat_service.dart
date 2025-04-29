@@ -526,4 +526,38 @@ class ChatService {
       'editedAt': FieldValue.serverTimestamp(),
     });
   }
+
+  Future<String> uploadImage(File imageFile) async {
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}_${imageFile.path.split('/').last}';
+    final ref = _storage.ref().child('chat_images/$fileName');
+    
+    final uploadTask = ref.putFile(imageFile);
+    final snapshot = await uploadTask;
+    
+    return await snapshot.ref.getDownloadURL();
+  }
+
+  Future<void> editMessage(String chatId, String messageId, String newText) async {
+    await _messagesCollection.doc(messageId).update({
+      'text': newText,
+      'isEdited': true,
+      'editedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> replyToMessage(String chatId, String messageId, String replyText) async {
+    final messageRef = _messagesCollection.doc(messageId);
+    
+    final messageDoc = await messageRef.get();
+    final messageData = messageDoc.data();
+    
+    if (messageData != null) {
+      await sendMessage(
+        chatId: chatId,
+        senderId: /* currentUserId */,
+        senderName: /* currentUserName */,
+        text: replyText,
+      );
+    }
+  }
 }
