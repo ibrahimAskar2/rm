@@ -8,6 +8,17 @@ workflows:
         PACKAGE_NAME: "com.ansar.ansar_team"
         GRADLE_VERSION: "7.5"
     scripts:
+      - name: Setup Flutter
+        script: |
+          flutter --version
+          flutter upgrade
+          flutter pub cache repair
+      - name: Verify project structure
+        script: |
+          pwd
+          ls -la
+          cd .
+          flutter doctor -v
       - name: Get Flutter packages
         script: flutter pub get
       - name: Flutter analyze
