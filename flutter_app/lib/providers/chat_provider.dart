@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/message_model.dart';
+import '../models/user_model.dart';
 
 class ChatMessage {
   final String id;
@@ -37,108 +40,167 @@ class ChatConversation {
 }
 
 class ChatProvider extends ChangeNotifier {
-  final List<ChatConversation> _conversations = [];
-  final Map<String, List<ChatMessage>> _messages = {};
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  String? _currentChatId;
+  List<ChatMessage> _messages = [];
+  Map<String, User> _usersInfo = {};
   bool _isLoading = false;
 
-  List<ChatConversation> get conversations => _conversations;
-  Map<String, List<ChatMessage>> get messages => _messages;
+  String? get currentChatId => _currentChatId;
+  List<ChatMessage> get messages => _messages;
+  Map<String, User> get usersInfo => _usersInfo;
   bool get isLoading => _isLoading;
 
-  Future<void> fetchConversations(String userId) async {
-    _isLoading = true;
-    notifyListeners();
-
-    await Future.delayed(const Duration(seconds: 1));
-
-    // محاكاة جلب المحادثات
-    _conversations.clear();
-    _conversations.addAll([
-      ChatConversation(
-        id: '1',
-        participantIds: [userId, '2'],
-        participantNames: ['أنت', 'أحمد محمد'],
-        lastMessageTime: DateTime.now().subtract(const Duration(hours: 1)),
-        lastMessageContent: 'مرحباً، كيف حالك اليوم؟',
-        hasUnreadMessages: true,
-      ),
-      ChatConversation(
-        id: '2',
-        participantIds: [userId, '3'],
-        participantNames: ['أنت', 'محمد علي'],
-        lastMessageTime: DateTime.now().subtract(const Duration(days: 1)),
-        lastMessageContent: 'تم إكمال المهمة المطلوبة',
-        hasUnreadMessages: false,
-      ),
-    ]);
-
-    _isLoading = false;
+  Future<void> setCurrentChat(String chatId) async {
+    _currentChatId = chatId;
+    await loadMessages();
     notifyListeners();
   }
 
-  Future<void> fetchMessages(String conversationId) async {
-    _isLoading = true;
-    notifyListeners();
+  Future<void> loadMessages() async {
+    if (_currentChatId == null) return;
 
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      _isLoading = true;
+      notifyListeners();
 
-    // محاكاة جلب الرسائل
-    _messages[conversationId] = [
-      ChatMessage(
-        id: '1',
-        senderId: '2',
-        senderName: 'أحمد محمد',
-        content: 'مرحباً، كيف حالك اليوم؟',
-        timestamp: DateTime.now().subtract(const Duration(hours: 1, minutes: 5)),
-      ),
-      ChatMessage(
-        id: '2',
-        senderId: '1',
-        senderName: 'أنت',
-        content: 'أنا بخير، شكراً لسؤالك. ماذا عنك؟',
-        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-      ),
-    ];
+      final messagesSnapshot = await _firestore
+          .collection('chats')
+          .doc(_currentChatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .get();
 
-    _isLoading = false;
-    notifyListeners();
-  }
+      _messages = messagesSnapshot.docs
+          .map((doc) => ChatMessage.fromMap(doc.id, doc.data()))
+          .toList();
 
-  Future<void> sendMessage(String conversationId, String senderId, String senderName, String content) async {
-    _isLoading = true;
-    notifyListeners();
+      // تحميل معلومات المستخدمين
+      final userIds = _messages
+          .map((message) => message.senderId)
+          .toSet()
+          .toList();
 
-    await Future.delayed(const Duration(seconds: 1));
+      for (final userId in userIds) {
+        if (!_usersInfo.containsKey(userId)) {
+          final userDoc = await _firestore
+              .collection('users')
+              .doc(userId)
+              .get();
 
-    final message = ChatMessage(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      senderId: senderId,
-      senderName: senderName,
-      content: content,
-      timestamp: DateTime.now(),
-    );
+          if (userDoc.exists) {
+            _usersInfo[userId] = User.fromMap(userId, userDoc.data()!);
+          }
+        }
+      }
 
-    if (_messages.containsKey(conversationId)) {
-      _messages[conversationId]!.add(message);
-    } else {
-      _messages[conversationId] = [message];
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
     }
+  }
 
-    // تحديث آخر رسالة في المحادثة
-    final index = _conversations.indexWhere((conv) => conv.id == conversationId);
-    if (index != -1) {
-      final conversation = _conversations[index];
-      _conversations[index] = ChatConversation(
-        id: conversation.id,
-        participantIds: conversation.participantIds,
-        participantNames: conversation.participantNames,
-        lastMessageTime: DateTime.now(),
-        lastMessageContent: content,
-        hasUnreadMessages: true,
+  Future<void> sendTextMessage(String text, String senderId) async {
+    if (_currentChatId == null) return;
+
+    try {
+      final message = ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        senderId: senderId,
+        text: text,
+        timestamp: DateTime.now(),
+        type: 'text',
       );
-    }
 
-    _isLoading = false;
-    notifyListeners();
+      await _firestore
+          .collection('chats')
+          .doc(_currentChatId)
+          .collection('messages')
+          .doc(message.id)
+          .set(message.toMap());
+
+      _messages.insert(0, message);
+      notifyListeners();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> sendImageMessage(String imageUrl, String senderId) async {
+    if (_currentChatId == null) return;
+
+    try {
+      final message = ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        senderId: senderId,
+        imageUrl: imageUrl,
+        timestamp: DateTime.now(),
+        type: 'image',
+      );
+
+      await _firestore
+          .collection('chats')
+          .doc(_currentChatId)
+          .collection('messages')
+          .doc(message.id)
+          .set(message.toMap());
+
+      _messages.insert(0, message);
+      notifyListeners();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> searchChatMessages(String query) async {
+    if (_currentChatId == null) return;
+
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final messagesSnapshot = await _firestore
+          .collection('chats')
+          .doc(_currentChatId)
+          .collection('messages')
+          .where('text', isGreaterThanOrEqualTo: query)
+          .where('text', isLessThanOrEqualTo: query + '\uf8ff')
+          .get();
+
+      _messages = messagesSnapshot.docs
+          .map((doc) => ChatMessage.fromMap(doc.id, doc.data()))
+          .toList();
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> markMessageAsRead(String messageId) async {
+    if (_currentChatId == null) return;
+
+    try {
+      await _firestore
+          .collection('chats')
+          .doc(_currentChatId)
+          .collection('messages')
+          .doc(messageId)
+          .update({'isRead': true});
+
+      final index = _messages.indexWhere((message) => message.id == messageId);
+      if (index != -1) {
+        _messages[index] = _messages[index].copyWith(isRead: true);
+        notifyListeners();
+      }
+    } catch (e) {
+      rethrow;
+    }
   }
 }
