@@ -225,6 +225,7 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
       }
     } catch (e) {
       if (mounted) {
+        final context = this.context;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('حدث خطأ أثناء إرسال الرسالة: $e')),
         );
@@ -470,6 +471,7 @@ class _PaginatedChatScreenRefactoredState extends State<PaginatedChatScreenRefac
             }
           } catch (e) {
             if (mounted) {
+              final context = this.context;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('حدث خطأ أثناء إرسال الصورة: $e')),
               );
