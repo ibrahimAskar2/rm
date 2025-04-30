@@ -10,7 +10,7 @@ class User {
   final bool isOnline;
   final DateTime lastActive;
   final Map<String, dynamic> settings;
-  final String role; // إضافة حقل الدور
+  final String role;
 
   User({
     required this.id,
@@ -18,14 +18,13 @@ class User {
     required this.email,
     required this.department,
     this.position = '',
-    this.imageUrl = '',
+    this.imageUrl = 'assets/default_avatar.png', // <-- صورة افتراضية
     this.isOnline = false,
     DateTime? lastActive,
     this.settings = const {},
-    this.role = 'employee', // القيمة الافتراضية هي موظف
+    this.role = 'employee',
   }) : lastActive = lastActive ?? DateTime.now();
 
-  // تحويل المستخدم إلى Map لتخزينه في Firestore
   Map<String, dynamic> toMap() {
     return {
       'name': name,
@@ -34,29 +33,27 @@ class User {
       'position': position,
       'imageUrl': imageUrl,
       'isOnline': isOnline,
-      'lastActive': Timestamp.fromDate(lastActive),
+      'lastActive': lastActive != null ? Timestamp.fromDate(lastActive) : null,
       'settings': settings,
-      'role': role, // إضافة الدور إلى البيانات المخزنة
+      'role': role,
     };
   }
 
-  // إنشاء مستخدم من Map من Firestore
   factory User.fromMap(String id, Map<String, dynamic> map) {
     return User(
       id: id,
-      name: map['name'] ?? '',
-      email: map['email'] ?? '',
-      department: map['department'] ?? '',
-      position: map['position'] ?? '',
-      imageUrl: map['imageUrl'] ?? '',
-      isOnline: map['isOnline'] ?? false,
+      name: (map['name'] as String?) ?? '',
+      email: (map['email'] as String?) ?? '',
+      department: (map['department'] as String?) ?? '',
+      position: (map['position'] as String?) ?? '',
+      imageUrl: map['imageUrl']?.isNotEmpty == true ? map['imageUrl']! : 'assets/default_avatar.png',
+      isOnline: (map['isOnline'] as bool?) ?? false,
       lastActive: (map['lastActive'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      settings: map['settings'] ?? {},
-      role: map['role'] ?? 'employee', // استخراج الدور من البيانات
+      settings: (map['settings'] as Map<String, dynamic>?) ?? {},
+      role: (map['role'] as String?) ?? 'employee',
     );
   }
 
-  // إنشاء نسخة معدلة من المستخدم
   User copyWith({
     String? name,
     String? email,
@@ -78,7 +75,7 @@ class User {
       isOnline: isOnline ?? this.isOnline,
       lastActive: lastActive ?? this.lastActive,
       settings: settings ?? this.settings,
-      role: role ?? this.role, // إضافة الدور إلى نسخة معدلة
+      role: role ?? this.role,
     );
   }
 
