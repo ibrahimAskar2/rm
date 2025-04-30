@@ -25,7 +25,7 @@ class ChatProvider extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String? _currentChatId;
   List<Message> _messages = [];
-  Map<String, User> _usersInfo = {};
+  final Map<String, User> _usersInfo = {}; // <-- هنا أصبح final
   bool _isLoading = false;
 
   String? get currentChatId => _currentChatId;
@@ -43,8 +43,7 @@ class ChatProvider extends ChangeNotifier {
     if (_currentChatId == null) return;
 
     try {
-      _isLoading = true;
-      notifyListeners();
+      _setLoading(true);
 
       final messagesSnapshot = await _firestore
           .collection('chats')
@@ -76,11 +75,9 @@ class ChatProvider extends ChangeNotifier {
         }
       }
 
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
     } catch (e) {
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
       rethrow;
     }
   }
@@ -109,6 +106,44 @@ class ChatProvider extends ChangeNotifier {
       rethrow;
     }
   }
+
+  Future<void> sendImageMessage(String imageUrl, String senderId, String receiverId) async {
+    if (_currentChatId == null) return;
+
+    try {
+      final message = Message.createMedia(
+        chatId: _currentChatId!,
+        senderId: senderId,
+        receiverId: receiverId,
+        content: 'صورة',
+        mediaType: 'image',
+        mediaUrl: imageUrl,
+        mediaData: {'url': imageUrl},
+      );
+
+      await _firestore
+          .collection('chats')
+          .doc(_currentChatId)
+          .collection('messages')
+          .doc(message.id)
+          .set(message.toMap());
+
+      _messages.insert(0, message);
+      notifyListeners();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  void _setLoading(bool value) {
+    if (_isLoading != value) {
+      _isLoading = value;
+      notifyListeners();
+    }
+  }
+
+  // باقي الدوال بدون تغيير...
+}
 
   Future<void> sendImageMessage(String imageUrl, String senderId, String receiverId) async {
     if (_currentChatId == null) return;
