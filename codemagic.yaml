@@ -4,66 +4,86 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m2
     environment:
-      flutter: stable
-      xcode: latest
-      node: latest
-      java: 17
-      groups:
-        - google_credentials
       vars:
         PACKAGE_NAME: "com.ansar.ansar_team"
-        GRADLE_VERSION: "7.5"
-        FLUTTER_VERSION: "stable"
     scripts:
-      - name: Setup Flutter
-        script: |
-          flutter --version
-          flutter upgrade
-          flutter pub cache repair
-          flutter doctor -v
-      - name: Verify project structure
-        script: |
-          pwd
-          ls -la
-          echo "Current directory contents:"
-          find . -type f -name "pubspec.yaml"
-      - name: Navigate to project directory
-        script: |
-          cd flutter_app
-          pwd
-          ls -la
-          if [ -f "pubspec.yaml" ]; then
-            echo "Found pubspec.yaml in project directory"
-            cat pubspec.yaml | grep "name:"
-          else
-            echo "pubspec.yaml not found in project directory"
-            find . -name "pubspec.yaml"
-          fi
       - name: Get Flutter packages
         script: |
-          cd flutter_app
           flutter pub get
-      - name: Flutter analyze
+      
+      - name: Check Flutter version
         script: |
-          cd flutter_app
-          flutter analyze
-      - name: Flutter test
+          flutter --version
+      
+      - name: Check for outdated packages
         script: |
-          cd flutter_app
-          flutter test
-      - name: Build APK
+          flutter pub outdated
+      
+      - name: Run Flutter doctor
         script: |
-          cd flutter_app
+          flutter doctor -v
+      
+      - name: Run Flutter analyze with detailed output
+        script: |
+          flutter analyze --verbose
+      
+      - name: Run Flutter test
+        script: |
+          flutter test --verbose
+      
+      - name: Check for platform-specific issues
+        script: |
+          flutter build apk --debug --verbose
+      
+      - name: Build Release APK
+        script: |
           flutter build apk --release --verbose
-      - name: Build App Bundle
-        script: |
-          cd flutter_app
-          flutter build appbundle --release --verbose
     artifacts:
-      - flutter_app/build/app/outputs/flutter-apk/app-release.apk
-      - flutter_app/build/app/outputs/bundle/release/app-release.aab
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/flutter-apk/app-debug.apk
     publishing:
       email:
         recipients:
-          - aallaannssaarr@gmail.com
+          - your-email@example.com
 
+  ios-workflow:
+    name: iOS Build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      groups:
+        - apple_credentials
+      vars:
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Flutter analyze
+        script: |
+          flutter analyze
+      - name: Build iOS
+        script: |
+          flutter build ios --release --no-codesign
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com
+
+env_groups:
+  google_credentials:
+    vars:
+      GOOGLE_PLAY_CREDENTIALS: encrypted_google_play_credentials
+  apple_credentials:
+    vars:
+      APP_STORE_CONNECT_ISSUER_ID: encrypted_app_store_connect_issuer_id
+      APP_STORE_CONNECT_KEY_IDENTIFIER: encrypted_app_store_connect_key_identifier
+      APP_STORE_CONNECT_PRIVATE_KEY: encrypted_app_store_connect_private_key
+      CERTIFICATE_PRIVATE_KEY: encrypted_certificate_private_key
+      CERTIFICATE_PASSWORD: encrypted_certificate_password
+      DISTRIBUTION_CERTIFICATE: encrypted_distribution_certificate
+      DISTRIBUTION_CERTIFICATE_PASSWORD: encrypted_distribution_certificate_password
+      PROVISIONING_PROFILE: encrypted_provisioning_profile 
