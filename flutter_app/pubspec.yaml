@@ -49,7 +49,7 @@ dependencies:
   url_launcher: ^6.2.2
   share_plus: ^7.2.1
   image_picker: ^1.0.5
-  file_picker: ^6.1.1
+  file_picker: ^10.1.2
   flutter_sound: ^9.2.13
   just_audio: ^0.9.36
   image: ^4.0.17
