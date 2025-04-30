@@ -412,13 +412,40 @@ class FirestoreService {
   }
 
   // دالة لقراءة وثيقة اختبار
-  Future<Map<String, dynamic>?> getTestDocument() async {
+ Future<Map<String, dynamic>?> getUserInfo(String userId) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('test').doc('connection_test').get();
-      return doc.data() as Map<String, dynamic>?;
+      final docSnapshot = await _firestore.collection('users').doc(userId).get();
+      return docSnapshot.data();
     } catch (e) {
-      print('خطأ في قراءة وثيقة الاختبار: $e');
-      return null;
+      debugPrint('Error getting user info: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> markNotificationsAsRead(List<String> notificationIds) async {
+    try {
+      final batch = _firestore.batch();
+      for (var notificationId in notificationIds) {
+        final docRef = _firestore.collection('notifications').doc(notificationId);
+        batch.update(docRef, {
+          'isRead': true,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error marking notifications as read: $e');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getUserStatistics(String userId) async {
+    try {
+      final statsDoc = await _firestore.collection('user_statistics').doc(userId).get();
+      return statsDoc.data() ?? {};
+    } catch (e) {
+      debugPrint('Error getting user statistics: $e');
+      rethrow;
     }
   }
 }
