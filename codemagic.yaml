@@ -65,21 +65,6 @@ workflows:
       email:
         recipients:
           - ansar.team.app@gmail.com
-        notify:
-          on_success: true
-          on_failure: true
-        subject: "Build Report for Ansar Team App"
-        body: |
-          Build completed with status: $CM_BUILD_STATUS
-          
-          Analysis Report:
-          $CM_ANALYSIS_REPORT
-          
-          Test Report:
-          $CM_TEST_REPORT
-          
-          Build Report:
-          $CM_BUILD_REPORT
 
   ios-workflow:
     name: iOS Build
