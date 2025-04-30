@@ -1,5 +1,5 @@
 pluginManagement {
-    def flutterSdkPath = System.getenv("FLUTTER_SDK") ?: { // أولوية لمتغير البيئة
+    def flutterSdkPath = System.getenv("FLUTTER_SDK") ?: {
         def properties = new Properties()
         def propertiesFile = new File(rootProject.projectDir.parentFile, 'local.properties')
         if (propertiesFile.exists()) {
@@ -8,9 +8,8 @@ pluginManagement {
         return properties.getProperty('flutter.sdk')
     }()
 
-    assert flutterSdkPath != null : "FLUTTER_SDK env var and flutter.sdk in local.properties are both missing!"
+    assert flutterSdkPath != null : "❗ FLUTTER_SDK و flutter.sdk مفقودان!"
     settings.ext.flutterSdkPath = flutterSdkPath
-
     includeBuild("${settings.ext.flutterSdkPath}/packages/flutter_tools/gradle")
 
     repositories {
