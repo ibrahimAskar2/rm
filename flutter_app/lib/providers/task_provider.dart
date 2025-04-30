@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Task {
   final String id;
@@ -20,10 +21,36 @@ class Task {
     required this.status,
     required this.priority,
   });
+
+  factory Task.fromMap(String id, Map<String, dynamic> map) {
+    return Task(
+      id: id,
+      title: map['title'] ?? '',
+      description: map['description'] ?? '',
+      dueDate: (map['dueDate'] as Timestamp).toDate(),
+      assignedTo: map['assignedTo'] ?? '',
+      assignedById: map['assignedById'] ?? '',
+      status: map['status'] ?? 'لم تبدأ بعد',
+      priority: (map['priority'] as int?) ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'description': description,
+      'dueDate': Timestamp.fromDate(dueDate),
+      'assignedTo': assignedTo,
+      'assignedById': assignedById,
+      'status': status,
+      'priority': priority,
+    };
+  }
 }
 
 class TaskProvider extends ChangeNotifier {
-  final List<Task> _tasks = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  List<Task> _tasks = [];
   bool _isLoading = false;
 
   List<Task> get tasks => _tasks;
@@ -33,83 +60,61 @@ class TaskProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final snapshot = await _firestore
+          .collection('tasks')
+          .where('assignedTo', isEqualTo: userId)
+          .get();
 
-    // محاكاة جلب المهام
-    _tasks.clear();
-    _tasks.addAll([
-      Task(
-        id: '1',
-        title: 'إعداد التقرير الأسبوعي',
-        description: 'إعداد تقرير بأهم الإنجازات خلال الأسبوع الماضي',
-        dueDate: DateTime.now().add(const Duration(days: 2)),
-        assignedTo: userId,
-        assignedById: '2',
-        status: 'قيد التنفيذ',
-        priority: 1,
-      ),
-      Task(
-        id: '2',
-        title: 'مراجعة خطة العمل',
-        description: 'مراجعة وتحديث خطة العمل للشهر القادم',
-        dueDate: DateTime.now().add(const Duration(days: 5)),
-        assignedTo: userId,
-        assignedById: '2',
-        status: 'لم تبدأ بعد',
-        priority: 2,
-      ),
-    ]);
-
-    _isLoading = false;
-    notifyListeners();
+      _tasks = snapshot.docs
+          .map((doc) => Task.fromMap(doc.id, doc.data()))
+          .toList();
+    } catch (e) {
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> addTask(Task task) async {
     _isLoading = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(seconds: 1));
-
-    _tasks.add(task);
-
-    _isLoading = false;
-    notifyListeners();
+    try {
+      await _firestore.collection('tasks').add(task.toMap());
+      await fetchTasks(task.assignedTo);
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Future<void> updateTaskStatus(String taskId, String newStatus) async {
     _isLoading = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(seconds: 1));
-
-    final index = _tasks.indexWhere((task) => task.id == taskId);
-    if (index != -1) {
-      final task = _tasks[index];
-      _tasks[index] = Task(
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        dueDate: task.dueDate,
-        assignedTo: task.assignedTo,
-        assignedById: task.assignedById,
-        status: newStatus,
-        priority: task.priority,
-      );
+    try {
+      await _firestore.collection('tasks').doc(taskId).update({'status': newStatus});
+      await fetchTasks(_tasks.firstWhere((t) => t.id == taskId).assignedTo);
+    } catch (e) {
+      rethrow;
     }
-
-    _isLoading = false;
-    notifyListeners();
   }
 
   Future<void> deleteTask(String taskId) async {
     _isLoading = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      await _firestore.collection('tasks').doc(taskId).delete();
+      await fetchTasks(_tasks.firstWhere((t) => t.id == taskId).assignedTo);
+    } catch (e) {
+      rethrow;
+    }
+  }
 
-    _tasks.removeWhere((task) => task.id == taskId);
-
-    _isLoading = false;
+  void _safeNotify() {
+    if (_isLoading) return;
     notifyListeners();
   }
 }
