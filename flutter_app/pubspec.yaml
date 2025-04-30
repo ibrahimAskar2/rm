@@ -18,7 +18,7 @@ dependencies:
   cloud_firestore: ^4.13.6
   firebase_storage: ^11.5.6
   firebase_messaging: ^14.7.9
-  firebase_database: ^10.2.4
+  firebase_database: ^10.3.8
 
   # المصادقة
   local_auth: ^2.1.8
@@ -26,7 +26,7 @@ dependencies:
   flutter_secure_storage: ^9.0.0
 
   # واجهة المستخدم
-  cupertino_icons: ^1.0.5
+  cupertino_icons: ^1.0.2
   flutter_svg: ^2.0.7
   cached_network_image: ^3.2.3
   shimmer: ^3.0.0
@@ -39,7 +39,7 @@ dependencies:
   # المكالمات الصوتية
   flutter_webrtc: ^0.9.47
   sdp_transform: ^0.3.2
-  permission_handler: ^10.4.3
+  permission_handler: ^11.1.0
 
   # أدوات
   intl: ^0.19.0
@@ -47,11 +47,11 @@ dependencies:
   uuid: ^4.2.2
   http: ^1.1.0
   url_launcher: ^6.2.2
-  share_plus: ^7.1.0
+  share_plus: ^7.2.1
   image_picker: ^1.0.5
   file_picker: ^6.1.1
   flutter_sound: ^9.2.13
-  just_audio: ^0.9.34
+  just_audio: ^0.9.36
   image: ^4.0.17
   flutter_local_notifications: ^16.2.0
   flutter_colorpicker: ^1.0.3
@@ -60,14 +60,16 @@ dependencies:
   # مكتبات إضافية
   screenshot: ^2.1.0
   qr_flutter: ^4.1.0
-  image_gallery_saver: ^1.7.1
+  image_gallery_saver: ^2.0.3
   photo_view: ^0.14.0
   flutter_staggered_grid_view: ^0.7.0
+  sqflite: ^2.3.0
+  audio_session: ^0.1.18
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^3.0.1
   mockito: ^5.4.2
   build_runner: ^2.4.6
 
