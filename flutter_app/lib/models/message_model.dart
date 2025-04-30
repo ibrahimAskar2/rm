@@ -15,6 +15,31 @@ class Message {
   final List<String> deliveredTo;
   final Map<String, dynamic>? mediaData;
 
+factory Message.createMedia({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required String content,
+    required String mediaType,
+    required String mediaUrl,
+    required Map<String, dynamic> mediaData,
+  }) {
+    return Message(
+      id: const Uuid().v4(),
+      chatId: chatId,
+      senderId: senderId,
+      receiverId: receiverId,
+      content: content,
+      type: mediaType,
+      mediaUrl: mediaUrl,
+      mediaData: mediaData,
+      timestamp: DateTime.now(),
+      isRead: false,
+      readBy: [senderId],
+      deliveredTo: [senderId],
+    );
+  }
+  
   Message({
     required this.id,
     required this.chatId,
