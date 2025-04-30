@@ -1,0 +1,19 @@
+flutter_plugins:
+  android:
+    - package: com.example.image_gallery_saver
+      pluginClass: ImageGallerySaverPlugin
+  ios:
+    - package: com.example.image_gallery_saver
+      pluginClass: ImageGallerySaverPlugin
+  macos:
+    - package: com.example.image_gallery_saver
+      pluginClass: ImageGallerySaverPlugin
+  windows:
+    - package: com.example.image_gallery_saver
+      pluginClass: ImageGallerySaverPlugin
+  linux:
+    - package: com.example.image_gallery_saver
+      pluginClass: ImageGallerySaverPlugin
+  web:
+    - package: com.example.image_gallery_saver
+      pluginClass: ImageGallerySaverPlugin 

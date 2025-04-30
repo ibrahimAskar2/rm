@@ -14,8 +14,13 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    lintOptions {
+        disable 'InvalidPackage'
+    }
 }
 
 dependencies {
     implementation 'androidx.annotation:annotation:1.5.0'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.10"
 } 
