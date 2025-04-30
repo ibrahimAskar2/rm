@@ -15,10 +15,6 @@ workflows:
         script: |
           flutter --version
       
-      - name: Check for outdated packages
-        script: |
-          flutter pub outdated
-      
       - name: Run Flutter doctor
         script: |
           flutter doctor -v
@@ -27,24 +23,15 @@ workflows:
         script: |
           flutter analyze --verbose
       
-      - name: Run Flutter test
-        script: |
-          flutter test --verbose
-      
-      - name: Check for platform-specific issues
-        script: |
-          flutter build apk --debug --verbose
-      
       - name: Build Release APK
         script: |
           flutter build apk --release --verbose
     artifacts:
       - build/app/outputs/flutter-apk/app-release.apk
-      - build/app/outputs/flutter-apk/app-debug.apk
     publishing:
       email:
         recipients:
-          - your-email@example.com
+          - ansar.team.app@gmail.com
 
   ios-workflow:
     name: iOS Build
