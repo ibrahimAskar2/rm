@@ -1,15 +1,14 @@
 pluginManagement {
-    def flutterSdkPath = System.getenv("FLUTTER_SDK") ?: {
+    def flutterSdkPath = System.getenv("FLUTTER_SDK") ?: { // أولوية لمتغير البيئة
         def properties = new Properties()
         def propertiesFile = new File(rootProject.projectDir.parentFile, 'local.properties')
         if (propertiesFile.exists()) {
             propertiesFile.withReader('UTF-8') { reader -> properties.load(reader) }
         }
-        def path = properties.getProperty('flutter.sdk')
-        assert path != null : "flutter.sdk not set and FLUTTER_SDK env var not found"
-        return path
+        return properties.getProperty('flutter.sdk')
     }()
 
+    assert flutterSdkPath != null : "FLUTTER_SDK env var and flutter.sdk in local.properties are both missing!"
     settings.ext.flutterSdkPath = flutterSdkPath
 
     includeBuild("${settings.ext.flutterSdkPath}/packages/flutter_tools/gradle")
@@ -17,7 +16,7 @@ pluginManagement {
     repositories {
         google()
         mavenCentral()
-        gradlePluginPortal()  // مهم جدًا في بيئة Codemagic
+        gradlePluginPortal()
     }
 }
 
