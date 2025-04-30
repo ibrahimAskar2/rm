@@ -21,6 +21,7 @@ workflows:
           if [ -d "flutter_app" ]; then
             echo "Found flutter_app directory"
             cd flutter_app
+            echo "Changed to flutter_app directory"
           else
             echo "Error: flutter_app directory not found"
             exit 1
@@ -46,7 +47,10 @@ workflows:
       
       - name: Clean and Update Dependencies
         script: |
-          # Verify we're still in the right directory
+          # Make sure we're in the flutter_app directory
+          cd flutter_app
+          
+          # Verify we're in the right directory
           if [ ! -f "pubspec.yaml" ]; then
             echo "Error: pubspec.yaml not found"
             echo "Current directory:"
@@ -71,7 +75,10 @@ workflows:
       
       - name: Code Analysis and Testing
         script: |
-          # Verify we're still in the right directory
+          # Make sure we're in the flutter_app directory
+          cd flutter_app
+          
+          # Verify we're in the right directory
           if [ ! -f "pubspec.yaml" ]; then
             echo "Error: pubspec.yaml not found"
             echo "Current directory:"
@@ -95,7 +102,10 @@ workflows:
       
       - name: Build APK
         script: |
-          # Verify we're still in the right directory
+          # Make sure we're in the flutter_app directory
+          cd flutter_app
+          
+          # Verify we're in the right directory
           if [ ! -f "pubspec.yaml" ]; then
             echo "Error: pubspec.yaml not found"
             echo "Current directory:"
