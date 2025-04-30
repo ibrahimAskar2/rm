@@ -7,8 +7,9 @@ workflows:
       vars:
         PACKAGE_NAME: "com.ansar.ansar_team"
     scripts:
-      - name: Check and set project directory
+      - name: Setup and Environment Check
         script: |
+          echo "=== Environment Setup ==="
           echo "Current directory:"
           pwd
           echo "Moving to Flutter project directory..."
@@ -17,33 +18,68 @@ workflows:
           pwd
           echo "Directory contents:"
           ls -la
-      
-      - name: Update Flutter
-        script: |
-          flutter upgrade
+          
+          echo "=== Flutter Environment ==="
           flutter --version
+          flutter doctor -v
+          
+          echo "=== Dependencies Check ==="
+          flutter pub outdated
       
-      - name: Get Flutter packages
+      - name: Update Dependencies
         script: |
+          echo "=== Updating Flutter ==="
+          flutter upgrade
+          
+          echo "=== Updating Dependencies ==="
+          flutter pub upgrade
           flutter pub get
       
-      - name: Run Flutter doctor
+      - name: Code Analysis and Testing
         script: |
-          flutter doctor -v
+          echo "=== Running Code Analysis ==="
+          flutter analyze --verbose > analysis_report.txt
+          
+          echo "=== Running Tests ==="
+          flutter test --verbose > test_report.txt
+          
+          echo "=== Generating Reports ==="
+          echo "Analysis Report:"
+          cat analysis_report.txt
+          echo "Test Report:"
+          cat test_report.txt
       
-      - name: Run Flutter analyze with detailed output
+      - name: Build APK
         script: |
-          flutter analyze --verbose
-      
-      - name: Build Release APK
-        script: |
-          flutter build apk --release --verbose
+          echo "=== Building Release APK ==="
+          flutter build apk --release --verbose > build_report.txt
+          
+          echo "=== Build Report ==="
+          cat build_report.txt
     artifacts:
       - flutter_app/build/app/outputs/flutter-apk/app-release.apk
+      - flutter_app/analysis_report.txt
+      - flutter_app/test_report.txt
+      - flutter_app/build_report.txt
     publishing:
       email:
         recipients:
           - ansar.team.app@gmail.com
+        notify:
+          on_success: true
+          on_failure: true
+        subject: "Build Report for Ansar Team App"
+        body: |
+          Build completed with status: $CM_BUILD_STATUS
+          
+          Analysis Report:
+          $CM_ANALYSIS_REPORT
+          
+          Test Report:
+          $CM_TEST_REPORT
+          
+          Build Report:
+          $CM_BUILD_REPORT
 
   ios-workflow:
     name: iOS Build
