@@ -20,9 +20,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (mounted) {
+      setState(() => _isLoading = true);
+    }
 
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     if (userProvider.user != null) {
@@ -30,39 +30,31 @@ class _HomeScreenState extends State<HomeScreen> {
           .fetchTasks(userProvider.user!.id);
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final userProvider = Provider.of<UserProvider>(context);
-    final taskProvider = Provider.of<TaskProvider>(context);
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('الرئيسية'),
-      ),
+      appBar: AppBar(title: const Text('الرئيسية')),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadData,
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
+                physics: const AlwaysScrollableScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                    Consumer<UserProvider>(
+                      builder: (context, userProvider, _) {
+                        return Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
                               children: [
                                 CircleAvatar(
                                   radius: 30,
@@ -82,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        userProvider.user?.name ?? '',
+                                        userProvider.user?.name ?? 'زائر',
                                         style: const TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
@@ -90,67 +82,72 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                       Text(
                                         userProvider.user?.role ?? '',
-                                        style: TextStyle(
-                                          color: Colors.grey[600],
-                                        ),
+                                        style: TextStyle(color: Colors.grey[600]),
                                       ),
                                     ],
                                   ),
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 24),
                     const Text(
                       'المهام العاجلة',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    taskProvider.tasks.isEmpty
-                        ? const Card(
-                            child: Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Center(
-                                child: Text('لا توجد مهام عاجلة'),
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: taskProvider.tasks.length,
-                            itemBuilder: (context, index) {
-                              final task = taskProvider.tasks[index];
-                              return Card(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                child: ListTile(
-                                  title: Text(task.title),
-                                  subtitle: Text(task.description),
-                                  trailing: Chip(
-                                    label: Text(task.status),
-                                    backgroundColor: task.status == 'قيد التنفيذ'
-                                        ? Colors.amber
-                                        : task.status == 'مكتملة'
-                                            ? Colors.green
-                                            : Colors.blue,
-                                    labelStyle: const TextStyle(
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                    Consumer<TaskProvider>(
+                      builder: (context, taskProvider, _) {
+                        return taskProvider.tasks.isEmpty
+                            ? const Card(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(child: Text('لا توجد مهام عاجلة')),
                                 ),
+                              )
+                            : ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: taskProvider.tasks.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                itemBuilder: (context, index) {
+                                  final task = taskProvider.tasks[index];
+                                  return Card(
+                                    margin: EdgeInsets.zero,
+                                    child: ListTile(
+                                      title: Text(task.title),
+                                      subtitle: Text(task.description),
+                                      trailing: Chip(
+                                        label: Text(
+                                          task.status,
+                                          style: const TextStyle(color: Colors.white),
+                                        ),
+                                        backgroundColor: _getStatusColor(task.status),
+                                      ),
+                                    ),
+                                  );
+                                },
                               );
-                            },
-                          ),
+                      },
+                    ),
                   ],
                 ),
               ),
             ),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'قيد التنفيذ':
+        return Colors.amber;
+      case 'مكتملة':
+        return Colors.green;
+      default:
+        return Colors.blue;
+    }
   }
 }
