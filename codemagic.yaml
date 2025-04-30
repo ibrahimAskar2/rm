@@ -9,11 +9,13 @@ workflows:
     scripts:
       - name: Check and set project directory
         script: |
-          if [ ! -f "pubspec.yaml" ]; then
-            echo "Moving to project directory..."
-            cd flutter_app
-          fi
+          echo "Current directory:"
           pwd
+          echo "Moving to Flutter project directory..."
+          cd flutter_app
+          echo "New directory:"
+          pwd
+          echo "Directory contents:"
           ls -la
       
       - name: Update Flutter
@@ -37,7 +39,7 @@ workflows:
         script: |
           flutter build apk --release --verbose
     artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
+      - flutter_app/build/app/outputs/flutter-apk/app-release.apk
     publishing:
       email:
         recipients:
