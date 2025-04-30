@@ -7,13 +7,23 @@ workflows:
       vars:
         PACKAGE_NAME: "com.ansar.ansar_team"
     scripts:
+      - name: Check and set project directory
+        script: |
+          if [ ! -f "pubspec.yaml" ]; then
+            echo "Moving to project directory..."
+            cd flutter_app
+          fi
+          pwd
+          ls -la
+      
+      - name: Update Flutter
+        script: |
+          flutter upgrade
+          flutter --version
+      
       - name: Get Flutter packages
         script: |
           flutter pub get
-      
-      - name: Check Flutter version
-        script: |
-          flutter --version
       
       - name: Run Flutter doctor
         script: |
