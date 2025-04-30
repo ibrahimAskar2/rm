@@ -38,29 +38,30 @@ class AttendanceProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final snapshot = await _firestore
+          .collection('attendance')
+          .where('userId', isEqualTo: userId)
+          .orderBy('date', descending: true)
+          .get();
 
-    // محاكاة جلب سجلات الحضور
-    _records.clear();
-    _records.addAll([
-      AttendanceRecord(
-        id: '1',
-        userId: userId,
-        checkInTime: DateTime.now().subtract(const Duration(days: 1, hours: 8)),
-        checkOutTime: DateTime.now().subtract(const Duration(days: 1)),
-        status: 'مكتمل',
-      ),
-      AttendanceRecord(
-        id: '2',
-        userId: userId,
-        checkInTime: DateTime.now().subtract(const Duration(hours: 8)),
-        checkOutTime: null,
-        status: 'قيد التقدم',
-      ),
-    ]);
-
-    _isLoading = false;
-    notifyListeners();
+      _records.clear();
+      _records.addAll(
+        snapshot.docs.map((doc) => AttendanceRecord(
+          id: doc.id,
+          userId: doc.data()['userId'],
+          checkInTime: (doc.data()['checkIn'] as Timestamp).toDate(),
+          checkOutTime: doc.data()['checkOut']?.toDate(),
+          status: doc.data()['status'],
+          notes: doc.data()['notes'] ?? '',
+        )).toList(),
+      );
+    } catch (e) {
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> refreshDashboardData() async {
@@ -68,30 +69,32 @@ class AttendanceProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // الحصول على قائمة الموظفين الحاضرين
+      final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+      
+      // جلب الحاضرين
       final presentSnapshot = await _firestore
           .collection('attendance')
-          .where('date', isEqualTo: DateTime.now().toIso8601String().split('T')[0])
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
+          .where('date', isLessThan: Timestamp.fromDate(today.add(const Duration(days: 1))))
           .where('status', isEqualTo: 'present')
           .get();
 
-      _presentEmployees = presentSnapshot.docs
-          .map((doc) => User.fromMap(doc.id, doc.data()))
-          .toList();
+      _presentEmployees = await _loadUsersFromSnapshot(presentSnapshot);
 
-      // حساب عدد الغائبين
+      // جلب الغائبين
       final absentSnapshot = await _firestore
           .collection('attendance')
-          .where('date', isEqualTo: DateTime.now().toIso8601String().split('T')[0])
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
+          .where('date', isLessThan: Timestamp.fromDate(today.add(const Duration(days: 1))))
           .where('status', isEqualTo: 'absent')
           .get();
 
       _absentCount = absentSnapshot.docs.length;
 
       // تحديد الموظف المميز
-      if (_presentEmployees.isNotEmpty) {
-        _featuredEmployee = _presentEmployees.first;
-      }
+      _featuredEmployee = _presentEmployees.isNotEmpty 
+          ? _presentEmployees.reduce((a, b) => a.lastActive.isAfter(b.lastActive) ? a : b)
+          : null;
 
       _isLoading = false;
       notifyListeners();
@@ -102,11 +105,25 @@ class AttendanceProvider extends ChangeNotifier {
     }
   }
 
+  Future<List<User>> _loadUsersFromSnapshot(QuerySnapshot snapshot) async {
+    final List<User> users = [];
+    for (final doc in snapshot.docs) {
+      final userDoc = await _firestore.collection('users').doc(doc['userId']).get();
+      if (userDoc.exists) {
+        users.add(User.fromMap(userDoc.id, userDoc.data()!));
+      }
+    }
+    return users;
+  }
+
   Future<void> checkIn(String userId) async {
     try {
+      final user = await _firestore.collection('users').doc(userId).get();
+      if (!user.exists) throw Exception('المستخدم غير موجود');
+
       await _firestore.collection('attendance').add({
         'userId': userId,
-        'date': DateTime.now().toIso8601String().split('T')[0],
+        'date': Timestamp.now(),
         'checkIn': Timestamp.now(),
         'status': 'present',
       });
@@ -118,17 +135,16 @@ class AttendanceProvider extends ChangeNotifier {
 
   Future<void> checkOut(String userId) async {
     try {
+      final today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
       final attendanceDoc = await _firestore
           .collection('attendance')
           .where('userId', isEqualTo: userId)
-          .where('date', isEqualTo: DateTime.now().toIso8601String().split('T')[0])
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
+          .where('date', isLessThan: Timestamp.fromDate(today.add(const Duration(days: 1))))
           .get();
 
       if (attendanceDoc.docs.isNotEmpty) {
-        await _firestore
-            .collection('attendance')
-            .doc(attendanceDoc.docs.first.id)
-            .update({
+        await _firestore.collection('attendance').doc(attendanceDoc.docs.first.id).update({
           'checkOut': Timestamp.now(),
         });
       }
@@ -136,5 +152,10 @@ class AttendanceProvider extends ChangeNotifier {
     } catch (e) {
       rethrow;
     }
+  }
+
+  void _safeNotify() {
+    if (_isLoading) return;
+    notifyListeners();
   }
 }
