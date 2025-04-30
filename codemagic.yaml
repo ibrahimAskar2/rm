@@ -22,18 +22,21 @@ workflows:
           echo "=== Flutter Environment ==="
           flutter --version
           flutter doctor -v
-          
-          echo "=== Dependencies Check ==="
-          flutter pub outdated
       
-      - name: Update Dependencies
+      - name: Clean and Update Dependencies
         script: |
+          echo "=== Cleaning Project ==="
+          flutter clean
+          
           echo "=== Updating Flutter ==="
           flutter upgrade
           
-          echo "=== Updating Dependencies ==="
-          flutter pub upgrade
+          echo "=== Getting Dependencies ==="
+          flutter pub cache repair
           flutter pub get
+          
+          echo "=== Updating Dependencies ==="
+          flutter pub upgrade --major-versions
       
       - name: Code Analysis and Testing
         script: |
