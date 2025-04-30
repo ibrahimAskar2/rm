@@ -12,25 +12,6 @@ buildscript {
     }
 }
 
-plugins {
-    id 'com.google.gms.google-services' version '4.4.2' apply false
-}
-
-// إضافة تكوين namespace تلقائي للمشاريع الفرعية
-gradle.projectsEvaluated {
-    subprojects { project ->
-        if (project.hasProperty('android')) {
-            project.android {
-                if (!project.android.hasProperty('namespace') || project.android.namespace == null || project.android.namespace.isEmpty()) {
-                    // تعيين namespace افتراضي بناءً على اسم المشروع
-                    project.android.namespace = project.group.toString() ?: "com.example.${project.name}"
-                    println "تم تعيين namespace تلقائياً للمشروع ${project.name}: ${project.android.namespace}"
-                }
-            }
-        }
-    }
-}
-
 allprojects {
     repositories {
         google()
