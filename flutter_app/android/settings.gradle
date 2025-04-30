@@ -1,22 +1,23 @@
 pluginManagement {
-    def flutterSdkPath = {
+    def flutterSdkPath = System.getenv("FLUTTER_SDK") ?: {
         def properties = new Properties()
         def propertiesFile = new File(rootProject.projectDir.parentFile, 'local.properties')
         if (propertiesFile.exists()) {
             propertiesFile.withReader('UTF-8') { reader -> properties.load(reader) }
         }
-        def flutterSdkPath = properties.getProperty('flutter.sdk')
-        assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
-        return flutterSdkPath
-    }
-    settings.ext.flutterSdkPath = flutterSdkPath()
+        def path = properties.getProperty('flutter.sdk')
+        assert path != null : "flutter.sdk not set and FLUTTER_SDK env var not found"
+        return path
+    }()
+
+    settings.ext.flutterSdkPath = flutterSdkPath
 
     includeBuild("${settings.ext.flutterSdkPath}/packages/flutter_tools/gradle")
 
     repositories {
         google()
         mavenCentral()
-        gradlePluginPortal()
+        gradlePluginPortal()  // مهم جدًا في بيئة Codemagic
     }
 }
 
@@ -31,15 +32,17 @@ dependencyResolutionManagement {
 rootProject.name = 'android'
 include ':app'
 
+// تحميل إعدادات إضافات Flutter
 def localPropertiesFile = new File(rootProject.projectDir, "local.properties")
 def properties = new Properties()
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader("UTF-8") { reader -> properties.load(reader) }
+}
 
-assert localPropertiesFile.exists()
-localPropertiesFile.withReader("UTF-8") { reader -> properties.load(reader) }
-
-def flutterSdkPath = properties.getProperty("flutter.sdk")
-assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
-apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"
+def flutterSdkPath = properties.getProperty("flutter.sdk") ?: System.getenv("FLUTTER_SDK")
+if (flutterSdkPath != null) {
+    apply from: "$flutterSdkPath/packages/flutter_tools/gradle/app_plugin_loader.gradle"
+}
 
 def flutterProjectRoot = rootProject.projectDir.parentFile.toPath()
 def plugins = new Properties()
