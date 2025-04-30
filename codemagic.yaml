@@ -13,15 +13,29 @@ workflows:
           echo "Current directory:"
           pwd
           
-          # Ensure we're in the correct directory
-          if [ ! -f "flutter_app/pubspec.yaml" ]; then
-            echo "Error: pubspec.yaml not found in flutter_app directory"
+          # List all directories to help debug
+          echo "Listing all directories:"
+          ls -R
+          
+          # Check if we're in the right place
+          if [ -d "flutter_app" ]; then
+            echo "Found flutter_app directory"
+            cd flutter_app
+          else
+            echo "Error: flutter_app directory not found"
             exit 1
           fi
           
-          echo "Moving to Flutter project directory..."
-          cd flutter_app
-          echo "New directory:"
+          # Verify we're in the right place
+          if [ ! -f "pubspec.yaml" ]; then
+            echo "Error: pubspec.yaml not found in flutter_app directory"
+            echo "Current directory contents:"
+            ls -la
+            exit 1
+          fi
+          
+          echo "Successfully found pubspec.yaml"
+          echo "Current directory:"
           pwd
           echo "Directory contents:"
           ls -la
@@ -32,9 +46,13 @@ workflows:
       
       - name: Clean and Update Dependencies
         script: |
-          # Ensure we're in the Flutter project directory
+          # Verify we're still in the right directory
           if [ ! -f "pubspec.yaml" ]; then
             echo "Error: pubspec.yaml not found"
+            echo "Current directory:"
+            pwd
+            echo "Directory contents:"
+            ls -la
             exit 1
           fi
           
@@ -53,9 +71,13 @@ workflows:
       
       - name: Code Analysis and Testing
         script: |
-          # Ensure we're in the Flutter project directory
+          # Verify we're still in the right directory
           if [ ! -f "pubspec.yaml" ]; then
             echo "Error: pubspec.yaml not found"
+            echo "Current directory:"
+            pwd
+            echo "Directory contents:"
+            ls -la
             exit 1
           fi
           
@@ -73,9 +95,13 @@ workflows:
       
       - name: Build APK
         script: |
-          # Ensure we're in the Flutter project directory
+          # Verify we're still in the right directory
           if [ ! -f "pubspec.yaml" ]; then
             echo "Error: pubspec.yaml not found"
+            echo "Current directory:"
+            pwd
+            echo "Directory contents:"
+            ls -la
             exit 1
           fi
           
