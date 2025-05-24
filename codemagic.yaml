@@ -4,16 +4,11 @@ workflows:
     max_build_duration: 15
     environment:
       flutter: stable
-      xcode: latest
-      vars:
-        PACKAGE_NAME: "com.example.productinquiry"
     scripts:
-      - name: Get dependencies
+      - name: Move into app directory
         script: |
+          cd product_inquiry_app
           flutter pub get
-      - name: Build APK
-        script: |
           flutter build apk --release
     artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk
-    
+      - product_inquiry_app/build/app/outputs/flutter-apk/app-release.apk
